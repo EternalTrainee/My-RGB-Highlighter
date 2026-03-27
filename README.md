@@ -1,71 +1,57 @@
-# my-rgb-highlighter README
+# RGB Highlighter
 
-This is the README for your extension "my-rgb-highlighter". After writing up a brief description, we recommend including the following sections.
+Uma extensão para Visual Studio Code que adiciona um efeito de brilho RGB animado ao texto selecionado.
 
-## Features
+## 🌈 Recursos
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **Brilho RGB Animado**: Realça o texto selecionado com uma animação de cores RGB fluida
+- **Commands no Menu de Contexto**: Ative e desative o brilho facilmente pelo menu de contexto do editor
+- **Animação Suave**: Transição contínua entre cores HSL para um efeito visual impressionante
+- **Text-Shadow Effect**: Cria um efeito de "glow" sutil ao redor do texto
 
-For example if there is an image subfolder under your extension project workspace:
+## 📋 Como Usar
 
-\!\[feature X\]\(images/feature-x.png\)
+1. Selecione o texto que deseja animar no editor
+2. Clique com o botão direito e escolha **"Ativar Brilho RGB!"**
+3. Para desativar a animação, clique com o botão direito e escolha **"Desativar Brilho RGB"** ou a use qualquer outra animação
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+A animação será exibida apenas enquanto o comando estiver ativo. O brilho RGB mudará continuamente de cor, criando um efeito visual vibrante.
 
-## Requirements
+## 🛠️ Requisitos
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- Visual Studio Code 1.96.0 ou superior
 
-## Extension Settings
+## ⚙️ Como Compilar
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+```bash
+# Compilar TypeScript
+npm run compile
 
-For example:
+# Compilar em modo watch
+npm run watch
 
-This extension contributes the following settings:
+# Executar testes
+npm run test
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+# Lint do código
+npm run lint
+```
 
-## Known Issues
+## 📝 Release Notes
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+### 0.0.1
 
-## Release Notes
+Versão inicial da extensão RGB Highlighter com:
+- Comando para ativar brilho RGB com animação de cores HSL
+- Comando para desativar brilho RGB
+- Menu de contexto integrado ao editor
 
-Users appreciate release notes as you update your extension.
+## 📚 Para mais informações
 
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+- [VS Code Extension API](https://code.visualstudio.com/api)
+- [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+- mateus.manufatura@gmail.com
 
 ---
 
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+**Divirta-se com o brilho RGB!** 🎨✨
