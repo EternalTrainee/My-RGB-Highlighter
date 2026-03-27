@@ -1,4 +1,4 @@
-# RGB Highlighter
+# My RGB Highlighter
 
 Uma extensão para Visual Studio Code que adiciona um efeito de brilho RGB animado ao texto selecionado.
 
