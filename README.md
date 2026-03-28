@@ -14,7 +14,9 @@ Uma extensão para Visual Studio Code que adiciona um efeito de brilho RGB anima
 1. Selecione o texto que deseja animar no editor
 2. Clique com o botão direito e escolha **"Ativar Brilho RGB!"**
 3. Para desativar a animação, clique com o botão direito e escolha **"Desativar Brilho RGB"** ou a use qualquer outra animação
-
+<p align="center">
+  <img src="sample.gif" alt="RGB Highlighter Demo"/>
+</p>
 A animação será exibida apenas enquanto o comando estiver ativo. O brilho RGB mudará continuamente de cor, criando um efeito visual vibrante.
 
 ## 🛠️ Requisitos
