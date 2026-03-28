@@ -2,6 +2,8 @@
   "name": "my-rgb-highlighter",
   "displayName": "My RGB Highlighter",
   "description": "My RGB Highlighter",
+  "publisher": "EternalTrainee",
+  "icon": "images/icon.png",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.96.0"
