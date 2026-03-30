@@ -36,11 +36,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = __importStar(require("vscode"));
-// Variáveis para controle global do estado
+// Variáveis globais para controlar o efeito
 let activeInterval;
 let decorationType;
+let rangeAlvoGlobal;
+let documentUriGlobal;
 function activate(context) {
-    // Registra o comando de ativar o brilho
+    // Comando para ativar o brilho RGB
     let disposable = vscode.commands.registerCommand("extension.brilharRGB", () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
@@ -52,49 +54,58 @@ function activate(context) {
             vscode.window.showInformationMessage("Selecione um texto para brilhar!");
             return;
         }
-        // 1. Para qualquer animação anterior
+        // Para animação anterior
         pararBrilho();
-        // 2. Salva o Range (trecho selecionado) para o brilho não "fugir"
-        const rangeAlvo = new vscode.Range(selection.start, selection.end);
+        // Salva globalmente o range e o documento
+        rangeAlvoGlobal = new vscode.Range(selection.start, selection.end);
+        documentUriGlobal = editor.document.uri.toString();
         let hue = 0;
-        // 3. Inicia o loop de cores (RGB/HSL)
+        // Loop de animação
         activeInterval = setInterval(() => {
-            hue = (hue + 10) % 360; // Velocidade da transição de cor
+            hue = (hue + 10) % 360;
             const corPrincipal = `hsl(${hue}, 100%, 50%)`;
-            // Remove a decoração do frame anterior para não vazar memória
+            // Remove decoração anterior
             if (decorationType) {
                 decorationType.dispose();
             }
-            // 4. Cria a nova decoração com o "Glow"
-            // decorationType = vscode.window.createTextEditorDecorationType({
-            //   color: corPrincipal,
-            //   fontWeight: "bold",
-            //   // O truque do ponto-e-vírgula permite injetar o text-shadow no CSS do VS Code
-            //   textDecoration: `none; text-shadow: 0 0 10px ${corPrincipal}, 0 0 20px ${corPrincipal};`,
-            //   rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-            // });
             decorationType = vscode.window.createTextEditorDecorationType({
                 color: corPrincipal,
                 fontWeight: "bold",
-                // Adicionamos um outline sutil para ajudar o VS Code a renderizar a cor
-                outline: `1px solid ${corPrincipal}`,
-                //   textDecoration: `none; text-shadow: 0 0 10px ${corPrincipal}, 0 0 20px ${corPrincipal};`,
                 textDecoration: `none; text-shadow: 0 0 10px ${corPrincipal}, 0 0 20px ${corPrincipal};`,
+                outline: `1px solid ${corPrincipal}`,
                 rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
             });
-            // Aplica ao editor
-            editor.setDecorations(decorationType, [rangeAlvo]);
-        }, 80); // 80ms garante uma animação bem fluida
+            const activeEditor = vscode.window.activeTextEditor;
+            if (activeEditor &&
+                documentUriGlobal === activeEditor.document.uri.toString() &&
+                rangeAlvoGlobal) {
+                activeEditor.setDecorations(decorationType, [rangeAlvoGlobal]);
+            }
+        }, 80);
         vscode.window.setStatusBarMessage("RGB Mode: ON 🌈", 3000);
     });
-    // Registra o comando de parar o brilho
+    { }
+    // Comando para parar o brilho
     let stopDisposable = vscode.commands.registerCommand("extension.pararBrilho", () => {
         pararBrilho();
         vscode.window.showInformationMessage("RGB Desativado.");
     });
+    // Listener para reaplicar a decoração ao trocar de editor
+    const editorChangeListener = vscode.window.onDidChangeActiveTextEditor((editor) => {
+        if (!editor)
+            return;
+        if (rangeAlvoGlobal && documentUriGlobal && decorationType) {
+            if (editor.document.uri.toString() === documentUriGlobal) {
+                editor.setDecorations(decorationType, [rangeAlvoGlobal]);
+            }
+        }
+    });
+    // Registrar disposables
     context.subscriptions.push(disposable);
     context.subscriptions.push(stopDisposable);
+    context.subscriptions.push(editorChangeListener);
 }
+// Função para parar a animação e limpar estado
 function pararBrilho() {
     if (activeInterval) {
         clearInterval(activeInterval);
@@ -104,8 +115,10 @@ function pararBrilho() {
         decorationType.dispose();
         decorationType = undefined;
     }
+    rangeAlvoGlobal = undefined;
+    documentUriGlobal = undefined;
 }
-// Limpeza quando a extensão é desativada
+// Limpeza ao desativar a extensão
 function deactivate() {
     pararBrilho();
 }
