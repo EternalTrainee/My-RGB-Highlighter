@@ -1,10 +1,16 @@
 import * as vscode from "vscode";
 
-// Variáveis globais para controlar o efeito
-let activeInterval: NodeJS.Timeout | undefined;
-let decorationType: vscode.TextEditorDecorationType | undefined;
-let rangeAlvoGlobal: vscode.Range | undefined;
-let documentUriGlobal: string | undefined;
+// Interface para gerenciar cada instância de brilho individualmente
+interface BrilhoInstancia {
+  id: string;
+  interval: NodeJS.Timeout;
+  decorationType: vscode.TextEditorDecorationType;
+  range: vscode.Range;
+  uri: string;
+}
+
+// Lista global para armazenar todos os brilhos ativos
+let brilhosAtivos: BrilhoInstancia[] = [];
 
 export function activate(context: vscode.ExtensionContext) {
   // Comando para ativar o brilho RGB
@@ -19,32 +25,23 @@ export function activate(context: vscode.ExtensionContext) {
 
       const selection = editor.selection;
       if (selection.isEmpty) {
-        vscode.window.showInformationMessage(
-          "Selecione um texto para brilhar!",
-        );
+        vscode.window.showInformationMessage("Selecione um texto para brilhar!");
         return;
       }
 
-      // Para animação anterior
-      pararBrilho();
-
-      // Salva globalmente o range e o documento
-      rangeAlvoGlobal = new vscode.Range(selection.start, selection.end);
-      documentUriGlobal = editor.document.uri.toString();
-
+      const rangeAtual = new vscode.Range(selection.start, selection.end);
+      const uriAtual = editor.document.uri.toString();
       let hue = 0;
 
-      // Loop de animação
-      activeInterval = setInterval(() => {
+      // Criamos uma referência inicial para a decoração que será atualizada no intervalo
+      let currentDecoration = vscode.window.createTextEditorDecorationType({});
+
+      const interval = setInterval(() => {
         hue = (hue + 10) % 360;
         const corPrincipal = `hsl(${hue}, 100%, 50%)`;
 
-        // Remove decoração anterior
-        if (decorationType) {
-          decorationType.dispose();
-        }
-
-        decorationType = vscode.window.createTextEditorDecorationType({
+        // Criamos a nova decoração com a cor atualizada
+        const newDecoration = vscode.window.createTextEditorDecorationType({
           color: corPrincipal,
           fontWeight: "bold",
           textDecoration: `none; text-shadow: 0 0 10px ${corPrincipal}, 0 0 20px ${corPrincipal};`,
@@ -52,62 +49,70 @@ export function activate(context: vscode.ExtensionContext) {
           rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
         });
 
+        // Aplica ao editor se ele ainda for o correto
         const activeEditor = vscode.window.activeTextEditor;
-        if (
-          activeEditor &&
-          documentUriGlobal === activeEditor.document.uri.toString() &&
-          rangeAlvoGlobal
-        ) {
-          activeEditor.setDecorations(decorationType, [rangeAlvoGlobal]);
+        if (activeEditor && activeEditor.document.uri.toString() === uriAtual) {
+          activeEditor.setDecorations(newDecoration, [rangeAtual]);
         }
+
+        // Descarta a decoração antiga para não vazar memória
+        currentDecoration.dispose();
+        
+        // Atualiza a referência na nossa lista de controle
+        const instancia = brilhosAtivos.find(b => b.interval === interval);
+        if (instancia) {
+          instancia.decorationType = newDecoration;
+        }
+        currentDecoration = newDecoration;
       }, 80);
 
-      vscode.window.setStatusBarMessage("RGB Mode: ON 🌈", 3000);
+      // Adiciona a nova instância à lista de brilhos ativos
+      brilhosAtivos.push({
+        id: Math.random().toString(36).substr(2, 9),
+        interval: interval,
+        decorationType: currentDecoration,
+        range: rangeAtual,
+        uri: uriAtual
+      });
+
+      vscode.window.setStatusBarMessage(`RGB Mode: ${brilhosAtivos.length} ativos 🌈`, 3000);
     },
   );
-{}
-  // Comando para parar o brilho
+
+  // Comando para parar TODOS os brilhos
   let stopDisposable = vscode.commands.registerCommand(
     "extension.pararBrilho",
     () => {
-      pararBrilho();
-      vscode.window.showInformationMessage("RGB Desativado.");
+      limparTodosOsBrilhos();
+      vscode.window.showInformationMessage("Todos os efeitos RGB foram removidos.");
     },
   );
 
-  // Listener para reaplicar a decoração ao trocar de editor
+  // Reaplica as decorações ao trocar de aba/editor
   const editorChangeListener = vscode.window.onDidChangeActiveTextEditor(
     (editor) => {
       if (!editor) return;
-      if (rangeAlvoGlobal && documentUriGlobal && decorationType) {
-        if (editor.document.uri.toString() === documentUriGlobal) {
-          editor.setDecorations(decorationType, [rangeAlvoGlobal]);
+      const uri = editor.document.uri.toString();
+      
+      brilhosAtivos.forEach(brilho => {
+        if (brilho.uri === uri) {
+          editor.setDecorations(brilho.decorationType, [brilho.range]);
         }
-      }
+      });
     },
   );
 
-  // Registrar disposables
-  context.subscriptions.push(disposable);
-  context.subscriptions.push(stopDisposable);
-  context.subscriptions.push(editorChangeListener);
+  context.subscriptions.push(disposable, stopDisposable, editorChangeListener);
 }
 
-// Função para parar a animação e limpar estado
-function pararBrilho() {
-  if (activeInterval) {
-    clearInterval(activeInterval);
-    activeInterval = undefined;
-  }
-  if (decorationType) {
-    decorationType.dispose();
-    decorationType = undefined;
-  }
-  rangeAlvoGlobal = undefined;
-  documentUriGlobal = undefined;
+function limparTodosOsBrilhos() {
+  brilhosAtivos.forEach(brilho => {
+    clearInterval(brilho.interval);
+    brilho.decorationType.dispose();
+  });
+  brilhosAtivos = [];
 }
 
-// Limpeza ao desativar a extensão
 export function deactivate() {
-  pararBrilho();
+  limparTodosOsBrilhos();
 }
