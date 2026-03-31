@@ -1,1 +1,8 @@
-my-rgb-highlighter-0.0.1.vsix
+.vsix
+out/
+node_modules/
+*.js.map
+package-lock.json
+node_modules/.package-lock.json
+out/extension.js
+out/extension.js.map
