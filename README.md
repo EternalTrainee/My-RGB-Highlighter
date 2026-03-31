@@ -41,18 +41,16 @@ npm run lint
 
 ## 📝 Release Notes
 
-### 0.1.0 - 2026-03-30
-
-### ✨ Novas Funcionalidades
-- **Suporte a Múltiplos Destaques:** Agora é possível aplicar o efeito RGB em diversos trechos de texto simultaneamente sem que um remova o outro.
+### 0.1.1 - 2026-03-31
 
 ### 🐛 Correções de Bugs (Fixes)
-- **Persistência de Destaque (#5):** Corrigido o problema onde o brilho desaparecia ao trocar de aba ou navegar entre arquivos. O efeito agora é reaplicado automaticamente ao retornar ao editor.
-* **Sobreposição de Seleção (#1):** Resolvida a limitação técnica que impedia a manutenção de mais de um destaque ativo por vez.
+
+- **Prevenção de Animações Duplicadas (#16):** Corrigido o bug onde múltiplas instâncias de animação eram criadas para o mesmo trecho de texto ao clicar várias vezes em "Ativar Brilho RGB!".
+- **Estabilização de Ciclo:** Agora o sistema valida se a seleção atual já possui um efeito ativo através da comparação de `Range` e `URI`, impedindo o acúmulo de intervalos de cor e preservando a performance do editor.
 
 ### ⚙️ Melhorias Técnicas
-- **Gerenciamento de Memória:** Implementação do descarte automático de `TextEditorDecorationType` obsoletos para prevenir vazamentos de memória durante as animações.
-- **Refatoração de Estado:** Migração de variáveis globais simples para uma estrutura de lista indexada por URI, garantindo maior estabilidade no rastreamento dos intervalos ativos.
+
+- **Feedback de Estado:** Adicionado alerta informativo para o usuário quando uma tentativa de ativação ocorre em um trecho já destacado.
 
 ## 📚 Para mais informações
 
