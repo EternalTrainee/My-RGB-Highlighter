@@ -98,12 +98,32 @@ export function activate(context: vscode.ExtensionContext) {
   let stopDisposable = vscode.commands.registerCommand(
     "extension.pararBrilho",
     () => {
-      limparTodosOsBrilhos();
-      vscode.window.showInformationMessage(
-        "Todos os efeitos RGB foram removidos do Trecho Selecionado.",
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) return;
+
+      const selecaoUsuario = editor.selection;
+      const uriAtual = editor.document.uri.toString();
+
+      // Filtra quem deve ser removido: mesmo arquivo E tem interseção com a seleção
+      const paraRemover = brilhosAtivos.filter(b => 
+        b.uri === uriAtual && b.range.intersection(selecaoUsuario)
       );
-    },
-    {},
+
+      if (paraRemover.length === 0) {
+        vscode.window.setStatusBarMessage("Nenhum efeito RGB na seleção.", 2000);
+        return;
+      }
+
+      paraRemover.forEach(brilho => {
+        clearInterval(brilho.interval);
+        brilho.decorationType.dispose();
+        
+        // Remove da lista global
+        brilhosAtivos = brilhosAtivos.filter(b => b.id !== brilho.id);
+      });
+
+      vscode.window.setStatusBarMessage(`Removidos ${paraRemover.length} efeitos.`, 3000);
+    }
   );
 
   // Reaplica as decorações ao trocar de aba/editor
