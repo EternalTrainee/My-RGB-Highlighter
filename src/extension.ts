@@ -32,7 +32,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       if (brilhosAtivos.length >= 5) {
-        vscode.window.showWarningMessage("Calma lá, entusiasta de RGB! O limite é de 5 brilhos por vez para não derreter a GPU.");
+        vscode.window.showWarningMessage("Calma lá, entusiasta de RGB! Vai derreter a GPU.");
         return;
       }
 
