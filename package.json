@@ -30,8 +30,20 @@
       {
         "command": "extension.pararBrilho",
         "title": "Desativar Brilho RGB"
-      }
+      },
+      {
+      "command": "extension.brilharLinha",
+      "title": "RGB: Brilhar Linha Atual"
+    }
     ],
+    "keybindings": [
+    {
+      "command": "extension.brilharLinha",
+      "key": "ctrl+shift+l",
+      "mac": "cmd+shift+l",
+      "when": "editorTextFocus"
+    }
+  ],
     "menus": {
       "editor/context": [
         {

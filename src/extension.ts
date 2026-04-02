@@ -31,26 +31,16 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      if (brilhosAtivos.length >= 5) {
+      /*if (brilhosAtivos.length >= 5) { //levando em conta que posso alterar o intervalo selecionando e selecionando novamente, não é difícil acumular brilhos. Coloquei um limite pra evitar que o PC do usuário vire uma churrasqueira.
         vscode.window.showWarningMessage("Calma lá, entusiasta de RGB! Vai derreter a GPU.");
         return;
-      }
+      }*/
+
       vscode.commands.executeCommand("extension.pararBrilho");
+
       const rangeAtual = new vscode.Range(selection.start, selection.end);
       const uriAtual = editor.document.uri.toString();
       let hue = 0;
-
-      // 1. Verifique se já existe um brilho exatamente no mesmo range/URI
-      const jaExiste = brilhosAtivos.find(
-        (b) => b.uri === uriAtual && b.range.isEqual(rangeAtual),
-      );
-
-      if (jaExiste) {
-        vscode.window.showInformationMessage("Este trecho já está brilhando!");
-        return; // Interrompe a criação de um novo intervalo
-      }
-
-      // Criamos uma referência inicial para a decoração que será atualizada no intervalo
       let currentDecoration = vscode.window.createTextEditorDecorationType({});
 
       const interval = setInterval(() => {
@@ -63,7 +53,7 @@ export function activate(context: vscode.ExtensionContext) {
           fontWeight: "bold",
           textDecoration: `none; text-shadow: 0 0 10px ${corPrincipal}, 0 0 20px ${corPrincipal};`,
           outline: `1px solid ${corPrincipal}`,
-          rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+          rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
         });
 
         // Aplica ao editor se ele ainda for o correto
@@ -85,112 +75,126 @@ export function activate(context: vscode.ExtensionContext) {
 
       // Adiciona a nova instância à lista de brilhos ativos
       brilhosAtivos.push({
-        id: Math.random().toString(36).substr(2, 9),
-        interval: interval,
+        id: Math.random().toString(36).slice(2, 11),
+        interval,
         decorationType: currentDecoration,
         range: rangeAtual,
         uri: uriAtual,
       });
-
-      vscode.window.setStatusBarMessage(
-        `RGB Mode: ${brilhosAtivos.length} ativos 🌈`,
-        3000,
-      );
-    },
+    }
   );
-function iniciarBrilho(editor: vscode.TextEditor, range: vscode.Range) {
-  const uriAtual = editor.document.uri.toString();
-  let hue = 0;
-  let currentDecoration = vscode.window.createTextEditorDecorationType({});
 
-  const interval = setInterval(() => {
-    hue = (hue + 10) % 360;
-    const cor = `hsl(${hue}, 100%, 50%)`;
-    const newDecoration = vscode.window.createTextEditorDecorationType({
-      color: cor,
-      fontWeight: "bold",
-      textDecoration: `none; text-shadow: 0 0 10px ${cor}, 0 0 20px ${cor};`,
-      outline: `1px solid ${cor}`,
-      rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+  function iniciarBrilho(editor: vscode.TextEditor, range: vscode.Range) {
+    const uriAtual = editor.document.uri.toString();
+    let hue = 0;
+    let currentDecoration = vscode.window.createTextEditorDecorationType({});
+
+    const interval = setInterval(() => {
+      hue = (hue + 10) % 360;
+      const cor = `hsl(${hue}, 100%, 50%)`;
+      const newDecoration = vscode.window.createTextEditorDecorationType({
+        color: cor,
+        fontWeight: "bold",
+        textDecoration: `none; text-shadow: 0 0 10px ${cor}, 0 0 20px ${cor};`,
+        outline: `1px solid ${cor}`,
+        rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
+      });
+
+      const activeEditor = vscode.window.activeTextEditor;
+      if (activeEditor && activeEditor.document.uri.toString() === uriAtual) {
+        activeEditor.setDecorations(newDecoration, [range]);
+      }
+
+      currentDecoration.dispose();
+      const instancia = brilhosAtivos.find((b) => b.interval === interval);
+      if (instancia) instancia.decorationType = newDecoration;
+      currentDecoration = newDecoration;
+    }, 80);
+
+    brilhosAtivos.push({
+      id: Math.random().toString(36).slice(2, 11),
+      interval,
+      decorationType: currentDecoration,
+      range,
+      uri: uriAtual,
     });
+  }
 
-    const activeEditor = vscode.window.activeTextEditor;
-    if (activeEditor && activeEditor.document.uri.toString() === uriAtual) {
-      activeEditor.setDecorations(newDecoration, [range]);
+  function subtrairRanges(base: vscode.Range, ocupado: vscode.Range): vscode.Range[] {
+    const interseccao = base.intersection(ocupado);
+    if (!interseccao || interseccao.isEmpty) {return [base];};
+
+    const resultados: vscode.Range[] = [];
+
+    if (base.start.isBefore(interseccao.start)) {
+      resultados.push(new vscode.Range(base.start, interseccao.start));
     }
 
-    currentDecoration.dispose();
-    const instancia = brilhosAtivos.find((b) => b.interval === interval);
-    if (instancia) instancia.decorationType = newDecoration;
-    currentDecoration = newDecoration;
-  }, 80);
-
-  brilhosAtivos.push({
-    id: Math.random().toString(36).substr(2, 9),
-    interval: interval,
-    decorationType: currentDecoration,
-    range: range,
-    uri: uriAtual,
-  });
-}
-
-function subtrairRanges(base: vscode.Range, ocupado: vscode.Range): vscode.Range[] {
-  const interseccao = base.intersection(ocupado);
-  if (!interseccao || interseccao.isEmpty) return [base];
-
-  const resultados: vscode.Range[] = [];
-  if (base.start.isBefore(interseccao.start)) {
-    resultados.push(new vscode.Range(base.start, interseccao.start));
+    if (base.end.isAfter(interseccao.end)) {
+      resultados.push(new vscode.Range(interseccao.end, base.end));
+    }
+    return resultados;
   }
-  if (base.end.isAfter(interseccao.end)) {
-    resultados.push(new vscode.Range(interseccao.end, base.end));
-  }
-  return resultados;
-}
   // Comando para parar TODOS os brilhos
   let stopDisposable = vscode.commands.registerCommand(
-  "extension.pararBrilho",
+    "extension.pararBrilho",
+    () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {return;};
+
+      const selecaoUsuario = editor.selection;
+      const uriAtual = editor.document.uri.toString();
+
+      // Filtra instâncias que têm qualquer intersecção com a seleção
+      const afetados = brilhosAtivos.filter(b => 
+        b.uri === uriAtual && !!b.range.intersection(selecaoUsuario)
+      );
+
+      afetados.forEach(brilho => {
+        // 1. Para o motor e remove a decoração antiga
+        clearInterval(brilho.interval);
+        brilho.decorationType.dispose();
+
+        // 2. Remove da lista global de rastreamento
+        brilhosAtivos = brilhosAtivos.filter(b => b.id !== brilho.id);
+
+        // 3. Calcula o que SOBROU do brilho original (áreas fora da seleção)
+        const sobras = subtrairRanges(brilho.range, selecaoUsuario);
+
+        // 4. Reinicia o brilho apenas para as partes que devem continuar
+        sobras.forEach(rangeSobra => {
+          iniciarBrilho(editor, rangeSobra);
+        });
+      });
+    }
+  );
+  let brilharLinhaDisposable = vscode.commands.registerCommand(
+  "extension.brilharLinha",
   () => {
+    vscode.commands.executeCommand("extension.pararBrilho");
     const editor = vscode.window.activeTextEditor;
     if (!editor) return;
 
-    const selecaoUsuario = editor.selection;
-    const uriAtual = editor.document.uri.toString();
+    const posicaoCursor = editor.selection.active;
+    const linha = editor.document.lineAt(posicaoCursor.line);
 
-    // Filtra instâncias que têm qualquer intersecção com a seleção
-    const afetados = brilhosAtivos.filter(b => 
-      b.uri === uriAtual && !!b.range.intersection(selecaoUsuario)
+    // 1. Seleciona a linha inteira (do primeiro ao último caractere)
+    const novaSelecao = new vscode.Selection(
+      linha.range.start,
+      linha.range.end
     );
+    editor.selection = novaSelecao;
 
-    if (afetados.length === 0) {
-      vscode.window.setStatusBarMessage("Nenhum efeito RGB nesta área.", 2000);
-      return;
-    }
-
-    afetados.forEach(brilho => {
-      // 1. Para o motor e remove a decoração antiga
-      clearInterval(brilho.interval);
-      brilho.decorationType.dispose();
-      
-      // 2. Remove da lista global de rastreamento
-      brilhosAtivos = brilhosAtivos.filter(b => b.id !== brilho.id);
-
-      // 3. Calcula o que SOBROU do brilho original (áreas fora da seleção)
-      const sobras = subtrairRanges(brilho.range, selecaoUsuario);
-
-      // 4. Reinicia o brilho apenas para as partes que devem continuar
-      sobras.forEach(rangeSobra => {
-        iniciarBrilho(editor, rangeSobra);
-      });
-    });
-
-    vscode.window.setStatusBarMessage(`Efeito removido da seleção.`, 3000);
+    // 2. Executa o comando de brilho que você já criou
+    // Isso garante que ele passe pelas validações de limpeza e limite de 5 brilhos
+    vscode.commands.executeCommand("extension.brilharRGB");
   }
 );
   // Reaplica as decorações ao trocar de aba/editor
   const editorChangeListener = vscode.window.onDidChangeActiveTextEditor(
-    (editor) => {{}
-      if (!editor) return;
+    (editor) => {
+      if (!editor) {return;};
+
       const uri = editor.document.uri.toString();
 
       brilhosAtivos.forEach((brilho) => {
@@ -201,7 +205,61 @@ function subtrairRanges(base: vscode.Range, ocupado: vscode.Range): vscode.Range
     },
   );
 
-  context.subscriptions.push(disposable, stopDisposable, editorChangeListener);
+  const changeListener = vscode.workspace.onDidChangeTextDocument((event) => {
+  const uri = event.document.uri.toString();
+  const editor = vscode.window.activeTextEditor;
+
+  // Atribuímos o resultado do flatMap diretamente à variável global no final
+  brilhosAtivos = brilhosAtivos.flatMap((brilho) => {
+    if (brilho.uri !== uri) {return [brilho];};
+
+    let novoRange = brilho.range;
+
+    for (const change of event.contentChanges) {
+      const r = change.range;
+
+      // 1. Ajuste de deslocamento (Edição antes do brilho)
+      if (r.end.isBefore(novoRange.start)) {
+        const delta = change.text.length - change.rangeLength;
+        novoRange = new vscode.Range(
+          novoRange.start.translate(0, delta),
+          novoRange.end.translate(0, delta)
+        );
+        continue;
+      }
+
+      // 2. Intersecção ou Deletou tudo
+      if (novoRange.intersection(r)) {
+        // Para o motor do brilho atual, pois ele será "fragmentado" ou removido
+        clearInterval(brilho.interval);
+        brilho.decorationType.dispose();
+
+        if (r.contains(novoRange)) {
+          return []; // Brilho totalmente engolido pela edição
+        }
+
+        // Se deletou parcialmente, criamos as sobras e retornamos VAZIO para o original
+        const sobras = subtrairRanges(novoRange, r);
+        if (editor) {
+          sobras.forEach(s => iniciarBrilho(editor, s));
+        }
+        return []; // O original morre aqui, os novos nascem via iniciarBrilho
+      }
+    }
+
+    // Se o brilho sobreviveu ou só foi deslocado, atualizamos o range e mantemos
+    brilho.range = novoRange;
+    return [brilho];
+  });
+});
+
+  context.subscriptions.push(
+    disposable,
+    stopDisposable,
+    editorChangeListener,
+    changeListener,
+    brilharLinhaDisposable
+  );
 }
 
 function limparTodosOsBrilhos() {
