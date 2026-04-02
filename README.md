@@ -56,7 +56,6 @@ npm run lint
 -- **Inteligência de Seleção:** O efeito agora é "consciente". Se você selecionar um trecho que já brilha, ele limpa o antigo antes de aplicar o novo, evitando sobreposições pesadas.
 - **Edição Dinâmica:** O brilho acompanha o seu código! Se você digitar ou deletar texto antes ou dentro de um destaque, o efeito se ajusta automaticamente ao novo posicionamento.
 - **Modo Linha Rápida:** Aplique o efeito instantaneamente na linha atual sem precisar selecionar caractere por caractere.
-- **Gestão Inteligente de Memória:** Limite de segurança de 5 instâncias simultâneas para garantir que o desempenho do seu editor (e sua GPU) permaneça impecável.
 
 ## 📚 Para mais informações
 
