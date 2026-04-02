@@ -11,9 +11,17 @@ Uma extensão para Visual Studio Code que adiciona um efeito de brilho RGB anima
 
 ## 📋 Como Usar
 
-1. Selecione o texto que deseja animar no editor
-2. Clique com o botão direito e escolha **"Ativar Brilho RGB!"**
-3. Para desativar a animação, clique com o botão direito e escolha **"Desativar Brilho RGB"** ou a use qualquer outra animação
+### Comandos e Atalhos
+| Ação | Comando (Paleta de Comandos) | Atalho |
+| :--- | :--- | :--- |
+| **Ativar Brilho** | `RGB: Ativar Brilho RGB!` | - |
+| **Brilhar Linha** | `RGB: Brilhar Linha Atual` | `Ctrl+Shift+L` (Win/Lin) / `Cmd+Shift+L` (Mac) |
+| **Remover Brilho** | `RGB: Desativar Brilho RGB` | - |
+
+### No Editor
+1. **Destaque Manual:** Selecione qualquer bloco de texto > Clique com o botão direito > **"Ativar Brilho RGB!"**.
+2. **Destaque Cirúrgico:** Para remover o brilho de apenas uma palavra dentro de uma frase que já brilha, selecione a palavra e use o comando **"Desativar Brilho RGB"**. O restante da frase continuará brilhando!
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/EternalTrainee/My-RGB-Highlighter/main/sample.gif" alt="RGB Highlighter Demo"/>
 </p>
@@ -41,16 +49,14 @@ npm run lint
 
 ## 📝 Release Notes
 
-### 0.1.1 - 2026-03-31
+### 1.0.0 - 2026-04-02
 
-### 🐛 Correções de Bugs (Fixes)
+### 🚀 Novos Recursos
 
-- **Prevenção de Animações Duplicadas (#16):** Corrigido o bug onde múltiplas instâncias de animação eram criadas para o mesmo trecho de texto ao clicar várias vezes em "Ativar Brilho RGB!".
-- **Estabilização de Ciclo:** Agora o sistema valida se a seleção atual já possui um efeito ativo através da comparação de `Range` e `URI`, impedindo o acúmulo de intervalos de cor e preservando a performance do editor.
-
-### ⚙️ Melhorias Técnicas
-
-- **Feedback de Estado:** Adicionado alerta informativo para o usuário quando uma tentativa de ativação ocorre em um trecho já destacado.
+-- **Inteligência de Seleção:** O efeito agora é "consciente". Se você selecionar um trecho que já brilha, ele limpa o antigo antes de aplicar o novo, evitando sobreposições pesadas.
+- **Edição Dinâmica:** O brilho acompanha o seu código! Se você digitar ou deletar texto antes ou dentro de um destaque, o efeito se ajusta automaticamente ao novo posicionamento.
+- **Modo Linha Rápida:** Aplique o efeito instantaneamente na linha atual sem precisar selecionar caractere por caractere.
+- **Gestão Inteligente de Memória:** Limite de segurança de 5 instâncias simultâneas para garantir que o desempenho do seu editor (e sua GPU) permaneça impecável.
 
 ## 📚 Para mais informações
 

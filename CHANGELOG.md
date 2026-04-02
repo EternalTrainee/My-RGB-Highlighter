@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.0.0] - 2026-04-02
+
+### ✨ Novas Funcionalidades
+
+- **Comando RGB por linha:** adicionada nova ação `extension.brilharLinha` (atalho `Ctrl+Shift+L` / `Cmd+Shift+L`) para aplicar efeito RGB na linha atual.
+- **Artefato de atualização de seleções:** o efeito agora acompanha edições de texto e mantém ranges atualizados automaticamente ao digitar/excluir dentro/outside do destaque.
+
+### 🐛 Correções de Bugs (Fixes)
+
+- **Parar apenas seleção ativa (#28):** `extension.pararBrilho` agora remove apenas os intervalos intersectados pela seleção atual, preservando outros destaques ativos no mesmo arquivo.
+- **Evita duplicação de animação (#21):** fim do problema de múltiplas animações no mesmo range quando reativa o comando repetidas vezes.
+
+### ⚙️ Melhorias Técnicas
+
+- **Refatoração de gestão de efeitos:** isolado `BrilhoInstancia` e lógica de `iniciarBrilho`, reduzindo vazamento e melhorando previsibilidade sob edição dinâmica.
+- **Reaplicação automática:** ao trocar de aba/editor, o estado do highlight é reaplicado no editor ativado.
+
+---
+
 ## [0.1.1] - 2026-03-31
 
 ### 🐛 Correções de Bugs (Fixes)
