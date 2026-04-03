@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0] - 2026-04-03
+
+### ✨ Novas Funcionalidades
+
+- **abcd:** abcd.
+
+### 🐛 Correções de Bugs (Fixes)
+
+- **Fim do flickering inicial (#22):** Resolvido o problema de cintilação ao iniciar ou reiniciar brilhos; as decorações agora são aplicadas com cor imediata, eliminando o frame vazio antes da primeira animação.
+
+---
+
 ## [1.0.0] - 2026-04-02
 
 ### ✨ Novas Funcionalidades

@@ -31,11 +31,6 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      /*if (brilhosAtivos.length >= 5) { //levando em conta que posso alterar o intervalo selecionando e selecionando novamente, não é difícil acumular brilhos. Coloquei um limite pra evitar que o PC do usuário vire uma churrasqueira.
-        vscode.window.showWarningMessage("Calma lá, entusiasta de RGB! Vai derreter a GPU.");
-        return;
-      }*/
-
       vscode.commands.executeCommand("extension.pararBrilho");
 
       const rangeAtual = new vscode.Range(selection.start, selection.end);
@@ -87,18 +82,27 @@ export function activate(context: vscode.ExtensionContext) {
   function iniciarBrilho(editor: vscode.TextEditor, range: vscode.Range) {
     const uriAtual = editor.document.uri.toString();
     let hue = 0;
-    let currentDecoration = vscode.window.createTextEditorDecorationType({});
+
+    const criarDecoracao = (h: number) => {
+    const cor = `hsl(${h}, 100%, 50%)`;
+    return vscode.window.createTextEditorDecorationType({
+      color: cor,
+      fontWeight: "bold",
+      textDecoration: `none; text-shadow: 0 0 10px ${cor}, 0 0 20px ${cor};`,
+      outline: `1px solid ${cor}`,
+      rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
+    });
+  };
+
+    // 1. Já começa com uma decoração colorida (evita o vazio inicial)
+    let currentDecoration = criarDecoracao(hue);
+    
+    // 2. Aplica IMEDIATAMENTE (evita esperar os 80ms)
+    editor.setDecorations(currentDecoration, [range]);
 
     const interval = setInterval(() => {
       hue = (hue + 10) % 360;
-      const cor = `hsl(${hue}, 100%, 50%)`;
-      const newDecoration = vscode.window.createTextEditorDecorationType({
-        color: cor,
-        fontWeight: "bold",
-        textDecoration: `none; text-shadow: 0 0 10px ${cor}, 0 0 20px ${cor};`,
-        outline: `1px solid ${cor}`,
-        rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
-      });
+      const newDecoration = criarDecoracao(hue);
 
       const activeEditor = vscode.window.activeTextEditor;
       if (activeEditor && activeEditor.document.uri.toString() === uriAtual) {
@@ -107,7 +111,7 @@ export function activate(context: vscode.ExtensionContext) {
 
       currentDecoration.dispose();
       const instancia = brilhosAtivos.find((b) => b.interval === interval);
-      if (instancia) instancia.decorationType = newDecoration;
+      if (instancia) {instancia.decorationType = newDecoration;};
       currentDecoration = newDecoration;
     }, 80);
 

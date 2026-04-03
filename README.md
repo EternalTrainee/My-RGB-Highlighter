@@ -23,7 +23,7 @@ Uma extensão para Visual Studio Code que adiciona um efeito de brilho RGB anima
 2. **Destaque Cirúrgico:** Para remover o brilho de apenas uma palavra dentro de uma frase que já brilha, selecione a palavra e use o comando **"Desativar Brilho RGB"**. O restante da frase continuará brilhando!
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/EternalTrainee/My-RGB-Highlighter/main/sample.gif" alt="RGB Highlighter Demo"/>
+  <img src="https://raw.githubusercontent.com/EternalTrainee/My-RGB-Highlighter/main/images/sample.gif" alt="RGB Highlighter Demo"/>
 </p>
 A animação será exibida apenas enquanto o comando estiver ativo. O brilho RGB mudará continuamente de cor, criando um efeito visual vibrante.
 
@@ -49,14 +49,15 @@ npm run lint
 
 ## 📝 Release Notes
 
-### 1.0.0 - 2026-04-02
+### 1.1.0 - 2026-04-03
 
 ### 🚀 Novos Recursos
 
--- **Inteligência de Seleção:** O efeito agora é "consciente". Se você selecionar um trecho que já brilha, ele limpa o antigo antes de aplicar o novo, evitando sobreposições pesadas.
-- **Edição Dinâmica:** O brilho acompanha o seu código! Se você digitar ou deletar texto antes ou dentro de um destaque, o efeito se ajusta automaticamente ao novo posicionamento.
-- **Modo Linha Rápida:** Aplique o efeito instantaneamente na linha atual sem precisar selecionar caractere por caractere.
-- **Gestão Inteligente de Memória:** Limite de segurança de 5 instâncias simultâneas para garantir que o desempenho do seu editor (e sua GPU) permaneça impecável.
+-- **abcd:** abcd.
+
+### 🐛 Correções de Bugs (Fixes)
+
+- **Fim do flickering inicial (#22):** Resolvido o problema de cintilação ao iniciar ou reiniciar brilhos; as decorações agora são aplicadas com cor imediata, eliminando o frame vazio antes da primeira animação.
 
 ## 📚 Para mais informações
 
