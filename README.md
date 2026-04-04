@@ -63,6 +63,18 @@ npm run lint
 
 ## 📝 Release Notes
 
+### 1.2.1 - 2026-04-06
+
+### 🐛 Bug Fixes
+
+- **Highlight Removal After Partial Removal (#42):** Fixed critical bug where removing the highlight effect of a second fragment would fail when the cursor was positioned between multiple highlight fragments after earlier partial removal.
+- **Range Offset at Boundaries (#42):** Fixed range offset calculation that wasn't applied when text edits occurred exactly at the boundary between two highlight fragments.
+- **Smart Cursor Detection (#42):** Implemented intelligent three-tier cursor detection strategy to correctly identify target highlights even when cursor is positioned between multiple fragments:
+  - Prioritizes highlights starting after the cursor
+  - Falls back to highlights ending before the cursor
+  - Uses minimum distance calculation as last resort
+- **Highlight Selection Accuracy (#42):** Resolved issue where the wrong highlight fragment could be removed when multiple fragments existed on the same line.
+
 ### 1.2.0 - 2026-04-06
 
 ### 🚀 New Features

@@ -114,7 +114,6 @@ export function activate(context: vscode.ExtensionContext) {
       uri: currentUri,
       type: "dynamic",
     });
-
   }
 
   function startStaticHighlight(editor: vscode.TextEditor, range: vscode.Range, color: string) {
@@ -182,22 +181,124 @@ export function activate(context: vscode.ExtensionContext) {
       const currentUri = editor.document.uri.toString();
       const cursorPosition = editor.selection.active;
 
+      // Validate all highlights still have valid ranges
+      const beforeValidation = activeHighlights.length;
+      activeHighlights = activeHighlights.filter(h => {
+        if (h.uri !== currentUri) return true;
+        try {
+          const lineCount = editor.document.lineCount;
+          const startLineValid = h.range.start.line < lineCount;
+          const endLineValid = h.range.end.line < lineCount;
+          
+          if (!startLineValid || !endLineValid) {
+            return false;
+          }
+
+          const startCharValid = h.range.start.character <= editor.document.lineAt(h.range.start.line).text.length;
+          const endCharValid = h.range.end.character <= editor.document.lineAt(h.range.end.line).text.length;
+          
+          if (!startCharValid || !endCharValid) {
+            return false;
+          }
+          
+          return true;
+        } catch(e) {
+          return false;
+        }
+      });
+
+      const afterValidation = activeHighlights.length;
+
       let affected: HighlightInstance[] = [];
 
       if (userSelection.isEmpty) {
         // No selection: find the highlight containing the cursor
-        affected = activeHighlights.filter(h => 
-          h.uri === currentUri && h.range.contains(cursorPosition)
-        );
+        // First pass: exact match (cursor inside or at boundary)
+        const exactMatches = activeHighlights.filter(h => {
+          if (h.uri !== currentUri) return false;
+          
+          const inRange = h.range.contains(cursorPosition);
+          const atStart = h.range.start.isEqual(cursorPosition);
+          const atEnd = h.range.end.isEqual(cursorPosition);
+          const singleChar = h.range.start.line === cursorPosition.line &&
+                             h.range.start.line === h.range.end.line &&
+                             h.range.start.character <= cursorPosition.character &&
+                             h.range.end.character >= cursorPosition.character;
+          
+          if (inRange || atStart || atEnd || singleChar) {
+            return true;
+          }
+          return false;
+        });
+
+        affected = exactMatches;
+
+        // If no exact match, find the closest highlight on the same line
+        if (affected.length === 0) {
+          // Strategy: prefer highlight that starts after cursor, if none then highlight that ends before cursor
+          const highlightsAfterCursor = activeHighlights.filter(h => 
+            h.uri === currentUri && 
+            h.range.start.line === cursorPosition.line &&
+            h.range.start.character >= cursorPosition.character
+          );
+          
+          const highlightsBeforeCursor = activeHighlights.filter(h => 
+            h.uri === currentUri && 
+            h.range.start.line === cursorPosition.line &&
+            h.range.end.character <= cursorPosition.character
+          );
+
+          let closest: HighlightInstance | null = null;
+
+          if (highlightsAfterCursor.length > 0) {
+            // Prefer the one that starts earliest after cursor
+            closest = highlightsAfterCursor.reduce((prev, curr) => 
+              curr.range.start.character < prev.range.start.character ? curr : prev
+            );
+          } else if (highlightsBeforeCursor.length > 0) {
+            // Prefer the one that ends latest before cursor
+            closest = highlightsBeforeCursor.reduce((prev, curr) => 
+              curr.range.end.character > prev.range.end.character ? curr : prev
+            );
+          } else {
+            // Last resort: find any highlight on same line with minimum distance
+            let minDistance = Infinity;
+            activeHighlights.forEach(h => {
+              if (h.uri !== currentUri || h.range.start.line !== cursorPosition.line) return;
+
+              const distanceToStart = Math.abs(h.range.start.character - cursorPosition.character);
+              const distanceToEnd = Math.abs(h.range.end.character - cursorPosition.character);
+              const distance = Math.min(distanceToStart, distanceToEnd);
+
+              if (distance < minDistance) {
+                minDistance = distance;
+                closest = h;
+              }
+            });
+          }
+
+          if (closest !== null) {
+            affected = [closest];
+          }
+        }
       } else {
         // With selection: find highlights that intersect with selection
-        affected = activeHighlights.filter(h => 
-          h.uri === currentUri && !!h.range.intersection(userSelection)
-        );
+        affected = activeHighlights.filter(h => {
+          if (h.uri !== currentUri) return false;
+          
+          const hasIntersection = !!h.range.intersection(userSelection);
+          const containsStart = h.range.contains(userSelection.start);
+          const containsEnd = h.range.contains(userSelection.end);
+          
+          if (hasIntersection || containsStart || containsEnd) {
+            return true;
+          }
+          return false;
+        });
       }
 
       if (affected.length === 0) {
-        vscode.window.setStatusBarMessage("No RGB effect to deactivate.", 2000);
+        vscode.window.setStatusBarMessage("No RGB effect to deactivate. Active: " + activeHighlights.length, 2000);
         return;
       }
 
@@ -329,72 +430,81 @@ export function activate(context: vscode.ExtensionContext) {
   // Collect ranges of leftovers that need to be recreated
   const leftoversToRecreate: { range: vscode.Range; uri: string; type?: "dynamic" | "static"; color?: string }[] = [];
 
-// Process each text change
+  // Process each text change
   for (const change of event.contentChanges) {
     const r = change.range;
+    const delta = change.text.length - change.rangeLength;
+    const linesAdded = (change.text.match(/\n/g) || []).length;
+    const linesRemoved = r.end.line - r.start.line;
+    const deltaLines = linesAdded - linesRemoved;
 
     // Process each highlight
     activeHighlights = activeHighlights.flatMap((highlight) => {
-      if (highlight.uri !== uri) {return [highlight];};
+      if (highlight.uri !== uri) { return [highlight]; }
 
       let newRange = highlight.range;
 
-      // 1. Offset adjustment (Edit before highlight)
+      // 1. Edit is completely before this highlight - only adjust if on same line or later line
       if (r.end.isBefore(newRange.start)) {
-        // Calculate number of lines added/removed
-        const linesAdded = (change.text.match(/\n/g) || []).length;
-        const linesRemoved = r.end.line - r.start.line;
-        const deltaLines = linesAdded - linesRemoved;
-        
-        // Calculate character delta (only for same line)
-        const delta = change.text.length - change.rangeLength;
-        
-        // If edit was on previous line, adjust lines
+        // If edit was on a different line entirely, adjust line numbers
         if (r.end.line < newRange.start.line) {
           newRange = new vscode.Range(
             newRange.start.translate(deltaLines, 0),
             newRange.end.translate(deltaLines, 0)
           );
         } 
-        // If on same line, adjust columns
-        else {
+        // If edit was on same line as highlight start, adjust character position
+        else if (r.end.line === newRange.start.line) {
           newRange = new vscode.Range(
             newRange.start.translate(0, delta),
             newRange.end.translate(0, delta)
           );
         }
+        
         highlight.range = newRange;
         return [highlight];
       }
 
-      // 2. Intersection or deleted everything
+      // 1.5 Edit ends exactly at the start of this highlight
+      if (r.end.line === newRange.start.line && r.end.character === newRange.start.character) {
+        newRange = new vscode.Range(
+          newRange.start.translate(0, delta),
+          newRange.end.translate(0, delta)
+        );
+        highlight.range = newRange;
+        return [highlight];
+      }
+
+      // 2. Edit intersects with/contains this highlight
       if (newRange.intersection(r)) {
-        // Stop current highlight motor as it will be "fragmented" or removed
         clearInterval(highlight.interval);
         highlight.decorationType.dispose();
 
+        // Highlight completely swallowed by edit
         if (r.contains(newRange)) {
-          return []; // Highlight completely swallowed by edit
+          return [];
         }
 
-        // If partially deleted, create leftovers
+        // Partially deleted - create leftovers
         const leftovers = subtractRanges(newRange, r);
         leftovers.forEach((l) => {
-          leftoversToRecreate.push({ range: l, uri: highlight.uri, type: highlight.type, color: highlight.color });
+          leftoversToRecreate.push({ 
+            range: l, 
+            uri: highlight.uri, 
+            type: highlight.type, 
+            color: highlight.color 
+          });
         });
 
         return []; // Remove original highlight
       }
 
-      // If highlight survived or just shifted, update range and keep it
-      highlight.range = newRange;
+      // 3. Edit is after this highlight - no adjustment needed
       return [highlight];
     });
   }
 
-
-
-  // Now start new highlights (leftovers) - WITHOUT adding to list first
+  // Now start new highlights (leftovers)
   if (editor && leftoversToRecreate.length > 0) {
     leftoversToRecreate.forEach((leftover) => {
       if (leftover.type === "static" && leftover.color) {
@@ -405,7 +515,6 @@ export function activate(context: vscode.ExtensionContext) {
     });
   }
 
-  
   // Reapply decorations after changes to ensure UI is updated
   if (editor) {
     const uri = editor.document.uri.toString();
