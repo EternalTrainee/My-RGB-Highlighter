@@ -1,300 +1,264 @@
 import * as vscode from "vscode";
 
-// Interface para gerenciar cada instância de brilho individualmente
-interface BrilhoInstancia {
+// Interface to manage each highlight instance individually
+interface HighlightInstance {
   id: string;
   interval: NodeJS.Timeout;
   decorationType: vscode.TextEditorDecorationType;
   range: vscode.Range;
   uri: string;
-  tipo?: "dinamico" | "estatico"; // Tipo de brilho
-  cor?: string; // Cor estática (se tipo === "estatico")
+  type?: "dynamic" | "static"; // Highlight type
+  color?: string; // Static color (if type === "static")
 }
 
-// Lista global para armazenar todos os brilhos ativos
-let brilhosAtivos: BrilhoInstancia[] = [];
+// Global list to store all active highlights
+let activeHighlights: HighlightInstance[] = [];
 
-// Cor amarela para marcação estática
-const COR_AMARELA = "#FFFF00";
+// Yellow color for static highlighting
+const YELLOW_COLOR = "#FFFF00";
 
-// Cor do atalho (rainbow é o default)
-let corAtalho = "rainbow";
+// Shortcut highlight color (rainbow is the default)
+let shortcutColor = "rainbow";
 
 export function activate(context: vscode.ExtensionContext) {
-  // Carrega a cor do atalho salva, ou usa 'rainbow' como padrão
-  corAtalho = context.globalState.get('corAtalho') || 'rainbow';
+  // Load the saved shortcut color, or use 'rainbow' as default
+  shortcutColor = context.globalState.get('shortcutColor') || 'rainbow';
 
-  // Comando para ativar o brilho RGB
+  // Command to activate RGB highlight
   let disposable = vscode.commands.registerCommand(
     "extension.brilharRGB",
     () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
-        vscode.window.showWarningMessage("Abra um arquivo primeiro!");
+        vscode.window.showWarningMessage("Please open a file first!");
         return;
       }
 
       const selection = editor.selection;
       if (selection.isEmpty) {
         vscode.window.showInformationMessage(
-          "Selecione um texto para brilhar!",
+          "Select text to highlight!",
         );
         return;
       }
 
       vscode.commands.executeCommand("extension.pararBrilho");
 
-      const rangeAtual = new vscode.Range(selection.start, selection.end);
-      const uriAtual = editor.document.uri.toString();
-      let hue = 0;
-      let currentDecoration = vscode.window.createTextEditorDecorationType({});
+      const currentRange = new vscode.Range(selection.start, selection.end);
+      
+      // Apply highlight using the configured shortcut color
+      if (shortcutColor === "rainbow") {
+        // If rainbow, apply animated effect
+        startHighlight(editor, currentRange);
+      } else {
+        // Otherwise apply static color
+        startStaticHighlight(editor, currentRange, shortcutColor);
+      }
 
-      const interval = setInterval(() => {
-        hue = (hue + 10) % 360;
-        const corPrincipal = `hsl(${hue}, 100%, 50%)`;
-
-        // Criamos a nova decoração com a cor atualizada
-        const newDecoration = vscode.window.createTextEditorDecorationType({
-          color: corPrincipal,
-          fontWeight: "bold",
-          textDecoration: `none; text-shadow: 0 0 10px ${corPrincipal}, 0 0 20px ${corPrincipal};`,
-          outline: `1px solid ${corPrincipal}`,
-          rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
-        });
-
-        // Aplica ao editor se ele ainda for o correto
-        const activeEditor = vscode.window.activeTextEditor;
-        if (activeEditor && activeEditor.document.uri.toString() === uriAtual) {
-          activeEditor.setDecorations(newDecoration, [rangeAtual]);
-        }
-
-        // Descarta a decoração antiga para não vazar memória
-        currentDecoration.dispose();
-
-        // Atualiza a referência na nossa lista de controle
-        const instancia = brilhosAtivos.find((b) => b.interval === interval);
-        if (instancia) {
-          instancia.decorationType = newDecoration;
-        }
-        currentDecoration = newDecoration;
-      }, 80);
-
-      // Adiciona a nova instância à lista de brilhos ativos
-      brilhosAtivos.push({
-        id: Math.random().toString(36).slice(2, 11),
-        interval,
-        decorationType: currentDecoration,
-        range: rangeAtual,
-        uri: uriAtual,
-        tipo: "dinamico",
-      });
-
-      // Desseleciona o texto para evitar que seja sobrescrito acidentalmente
-      editor.selection = new vscode.Selection(rangeAtual.end, rangeAtual.end);
+      // Deselect text to prevent accidental overwrite
+      editor.selection = new vscode.Selection(currentRange.end, currentRange.end);
     }
   );
 
-  function iniciarBrilho(editor: vscode.TextEditor, range: vscode.Range) {
-    const uriAtual = editor.document.uri.toString();
+  function startHighlight(editor: vscode.TextEditor, range: vscode.Range) {
+    const currentUri = editor.document.uri.toString();
     let hue = 0;
 
-  
-
-    const criarDecoracao = (h: number) => {
-    const cor = `hsl(${h}, 100%, 50%)`;
+    const createDecoration = (h: number) => {
+    const color = `hsl(${h}, 100%, 50%)`;
     return vscode.window.createTextEditorDecorationType({
-      color: cor,
+      color: color,
       fontWeight: "bold",
-      textDecoration: `none; text-shadow: 0 0 10px ${cor}, 0 0 20px ${cor};`,
-      outline: `1px solid ${cor}`,
+      textDecoration: `none; text-shadow: 0 0 10px ${color}, 0 0 20px ${color};`,
+      outline: `1px solid ${color}`,
       rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
     });
   };
 
-    // 1. Já começa com uma decoração colorida (evita o vazio inicial)
-    let currentDecoration = criarDecoracao(hue);
+    // 1. Already starts with a colored decoration (avoids initial void)
+    let currentDecoration = createDecoration(hue);
     
-    // 2. Aplica IMEDIATAMENTE (evita esperar os 80ms)
+    // 2. Apply IMMEDIATELY (avoids waiting 80ms)
     editor.setDecorations(currentDecoration, [range]);
 
     const interval = setInterval(() => {
       hue = (hue + 10) % 360;
-      const newDecoration = criarDecoracao(hue);
+      const newDecoration = createDecoration(hue);
 
       const activeEditor = vscode.window.activeTextEditor;
-      if (activeEditor && activeEditor.document.uri.toString() === uriAtual) {
+      if (activeEditor && activeEditor.document.uri.toString() === currentUri) {
         activeEditor.setDecorations(newDecoration, [range]);
       }
 
       currentDecoration.dispose();
-      const instancia = brilhosAtivos.find((b) => b.interval === interval);
-      if (instancia) {instancia.decorationType = newDecoration;};
+      const instance = activeHighlights.find((h) => h.interval === interval);
+      if (instance) {instance.decorationType = newDecoration;};
       currentDecoration = newDecoration;
     }, 80);
 
-    brilhosAtivos.push({
+    activeHighlights.push({
       id: Math.random().toString(36).slice(2, 11),
       interval,
       decorationType: currentDecoration,
       range,
-      uri: uriAtual,
-      tipo: "dinamico",
+      uri: currentUri,
+      type: "dynamic",
     });
 
   }
 
-  function iniciarBrilhoEstático(editor: vscode.TextEditor, range: vscode.Range, cor: string) {
-    const uriAtual = editor.document.uri.toString();
+  function startStaticHighlight(editor: vscode.TextEditor, range: vscode.Range, color: string) {
+    const currentUri = editor.document.uri.toString();
 
     const decoration = vscode.window.createTextEditorDecorationType({
-      //backgroundColor: cor,
-      color: cor,
+      //backgroundColor: color,
+      color: color,
       fontWeight: "bold",
-      textDecoration: `none; text-shadow: 0 0 10px ${cor}, 0 0 20px ${cor};`,
-      outline: `1px solid ${cor}`,
+      textDecoration: `none; text-shadow: 0 0 10px ${color}, 0 0 20px ${color};`,
+      outline: `1px solid ${color}`,
       rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
     });
 
     editor.setDecorations(decoration, [range]);
 
-    // Dummy interval com clearInterval vazio para manter compatibilidade
+    // Dummy interval with empty clearInterval to maintain compatibility
     const interval = setInterval(() => {}, 999999999);
 
-    brilhosAtivos.push({
+    activeHighlights.push({
       id: Math.random().toString(36).slice(2, 11),
       interval,
       decorationType: decoration,
       range,
-      uri: uriAtual,
-      tipo: "estatico",
-      cor,
+      uri: currentUri,
+      type: "static",
+      color,
     });
   }
 
-  function subtrairRanges(base: vscode.Range, ocupado: vscode.Range): vscode.Range[] {
-    const interseccao = base.intersection(ocupado);
-    if (!interseccao || interseccao.isEmpty) {return [base];};
+  function subtractRanges(base: vscode.Range, occupied: vscode.Range): vscode.Range[] {
+    const intersection = base.intersection(occupied);
+    if (!intersection || intersection.isEmpty) {return [base];};
 
-    const resultados: vscode.Range[] = [];
+    const results: vscode.Range[] = [];
 
-    if (base.start.isBefore(interseccao.start)) {
-      resultados.push(new vscode.Range(base.start, interseccao.start));
+    if (base.start.isBefore(intersection.start)) {
+      results.push(new vscode.Range(base.start, intersection.start));
     }
 
-    if (base.end.isAfter(interseccao.end)) {
-      resultados.push(new vscode.Range(interseccao.end, base.end));
+    if (base.end.isAfter(intersection.end)) {
+      results.push(new vscode.Range(intersection.end, base.end));
     }
     
-    return resultados.filter(r => !r.isEmpty);
+    return results.filter(r => !r.isEmpty);
   }
-  // Comando para parar TODOS os brilhos
+  // Command to stop ALL highlights
   let stopDisposable = vscode.commands.registerCommand(
     "extension.pararBrilho",
     () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {return;};
 
-      const selecaoUsuario = editor.selection;
-      const uriAtual = editor.document.uri.toString();
-      const posicaoCursor = editor.selection.active;
+      const userSelection = editor.selection;
+      const currentUri = editor.document.uri.toString();
+      const cursorPosition = editor.selection.active;
 
-      let afetados: BrilhoInstancia[] = [];
+      let affected: HighlightInstance[] = [];
 
-      if (selecaoUsuario.isEmpty) {
-        // Sem seleção: encontra o brilho que contém o cursor
-        afetados = brilhosAtivos.filter(b => 
-          b.uri === uriAtual && b.range.contains(posicaoCursor)
+      if (userSelection.isEmpty) {
+        // No selection: find the highlight containing the cursor
+        affected = activeHighlights.filter(h => 
+          h.uri === currentUri && h.range.contains(cursorPosition)
         );
       } else {
-        // Com seleção: encontra brilhos que intersectam com a seleção
-        afetados = brilhosAtivos.filter(b => 
-          b.uri === uriAtual && !!b.range.intersection(selecaoUsuario)
+        // With selection: find highlights that intersect with selection
+        affected = activeHighlights.filter(h => 
+          h.uri === currentUri && !!h.range.intersection(userSelection)
         );
       }
 
-      if (afetados.length === 0) {
-        vscode.window.setStatusBarMessage("Nenhum efeito RGB para desativar.", 2000);
+      if (affected.length === 0) {
+        vscode.window.setStatusBarMessage("No RGB effect to deactivate.", 2000);
         return;
       }
 
-      afetados.forEach(brilho => {
-        if (selecaoUsuario.isEmpty) {
-          // Desativa o brilho inteiro (não cria sobras)
-          clearInterval(brilho.interval);
-          brilho.decorationType.dispose();
-          brilhosAtivos = brilhosAtivos.filter(b => b.id !== brilho.id);
+      affected.forEach(highlight => {
+        if (userSelection.isEmpty) {
+          // Deactivate entire highlight (no leftovers)
+          clearInterval(highlight.interval);
+          highlight.decorationType.dispose();
+          activeHighlights = activeHighlights.filter(h => h.id !== highlight.id);
         } else {
-          // Desativa apenas a seleção (cria sobras)
-          clearInterval(brilho.interval);
-          brilho.decorationType.dispose();
-          brilhosAtivos = brilhosAtivos.filter(b => b.id !== brilho.id);
+          // Deactivate only selection (creates leftovers)
+          clearInterval(highlight.interval);
+          highlight.decorationType.dispose();
+          activeHighlights = activeHighlights.filter(h => h.id !== highlight.id);
 
-          const sobras = subtrairRanges(brilho.range, selecaoUsuario);
+          const leftovers = subtractRanges(highlight.range, userSelection);
           
-          sobras.forEach(rangeSobra => {
-            if (brilho.tipo === "estatico" && brilho.cor) {
-              iniciarBrilhoEstático(editor, rangeSobra, brilho.cor);
+          leftovers.forEach(leftoverRange => {
+            if (highlight.type === "static" && highlight.color) {
+              startStaticHighlight(editor, leftoverRange, highlight.color);
             } else {
-              iniciarBrilho(editor, rangeSobra);
+              startHighlight(editor, leftoverRange);
             }
           });
         }
       });
 
-      vscode.window.setStatusBarMessage(`Desativados ${afetados.length} efeito(s).`, 2000);
+      vscode.window.setStatusBarMessage(`Deactivated ${affected.length} effect(s).`, 2000);
     }
   );
-  let brilharLinhaDisposable = vscode.commands.registerCommand(
+  let highlightLineDisposable = vscode.commands.registerCommand(
   "extension.brilharLinha",
   () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) return;
 
-    const uriAtual = editor.document.uri.toString();
-    const posicaoCursor = editor.selection.active;
-    const linha = editor.document.lineAt(posicaoCursor.line);
+    const currentUri = editor.document.uri.toString();
+    const cursorPosition = editor.selection.active;
+    const line = editor.document.lineAt(cursorPosition.line);
 
-    // Remove EXPLICITAMENTE todos os brilhos que intersectam com a linha
-    const brilhosNaLinha = brilhosAtivos.filter(b => 
-      b.uri === uriAtual && !!b.range.intersection(linha.range)
+    // Remove EXPLICITLY all highlights that intersect with the line
+    const highlightsOnLine = activeHighlights.filter(h => 
+      h.uri === currentUri && !!h.range.intersection(line.range)
     );
     
-    brilhosNaLinha.forEach(brilho => {
-      clearInterval(brilho.interval);
-      brilho.decorationType.dispose();
-      brilhosAtivos = brilhosAtivos.filter(b => b.id !== brilho.id);
+    highlightsOnLine.forEach(highlight => {
+      clearInterval(highlight.interval);
+      highlight.decorationType.dispose();
+      activeHighlights = activeHighlights.filter(h => h.id !== highlight.id);
     });
 
-    // 1. Seleciona a linha inteira (do primeiro ao último caractere)
-    const novaSelecao = new vscode.Selection(
-      linha.range.start,
-      linha.range.end
+    // 1. Select entire line (from first to last character)
+    const newSelection = new vscode.Selection(
+      line.range.start,
+      line.range.end
     );
-    editor.selection = novaSelecao;
+    editor.selection = newSelection;
 
-    // 2. Aplica a marcação à linha com a cor do atalho
-    if (corAtalho === "rainbow") {
-      // Se rainbow, aplica o efeito animado
-      iniciarBrilho(editor, linha.range);
+    // 2. Apply highlighting to the line with shortcut color
+    if (shortcutColor === "rainbow") {
+      // If rainbow, apply animated effect
+      startHighlight(editor, line.range);
     } else {
-      // Caso contrário, aplica a cor estática
-      iniciarBrilhoEstático(editor, linha.range, corAtalho);
+      // Otherwise apply static color
+      startStaticHighlight(editor, line.range, shortcutColor);
     }
 
-    // 3. Desseleciona o texto para evitar que seja sobrescrito acidentalmente
-    editor.selection = new vscode.Selection(linha.range.end, linha.range.end);
+    // 3. Deselect text to prevent accidental overwrite
+    editor.selection = new vscode.Selection(line.range.end, line.range.end);
   }
 );
-  // Reaplica as decorações ao trocar de aba/editor
+  // Reapplies decorations when switching tabs/editor
   const editorChangeListener = vscode.window.onDidChangeActiveTextEditor(
     (editor) => {
       if (!editor) {return;};
 
       const uri = editor.document.uri.toString();
 
-      brilhosAtivos.forEach((brilho) => {
-        if (brilho.uri === uri) {
-          editor.setDecorations(brilho.decorationType, [brilho.range]);
+      activeHighlights.forEach((highlight) => {
+        if (highlight.uri === uri) {
+          editor.setDecorations(highlight.decorationType, [highlight.range]);
         }
       });
     },
@@ -304,92 +268,92 @@ export function activate(context: vscode.ExtensionContext) {
   const uri = event.document.uri.toString();
   const editor = vscode.window.activeTextEditor;
 
-  // Coletar ranges de sobras que precisam ser recriadas
-  const sobrasParaReciar: { range: vscode.Range; uri: string; tipo?: "dinamico" | "estatico"; cor?: string }[] = [];
+  // Collect ranges of leftovers that need to be recreated
+  const leftoversToRecreate: { range: vscode.Range; uri: string; type?: "dynamic" | "static"; color?: string }[] = [];
 
-  // Processa cada mudança de texto
+// Process each text change
   for (const change of event.contentChanges) {
     const r = change.range;
 
-    // Processa cada brilho
-    brilhosAtivos = brilhosAtivos.flatMap((brilho) => {
-      if (brilho.uri !== uri) {return [brilho];};
+    // Process each highlight
+    activeHighlights = activeHighlights.flatMap((highlight) => {
+      if (highlight.uri !== uri) {return [highlight];};
 
-      let novoRange = brilho.range;
+      let newRange = highlight.range;
 
-      // 1. Ajuste de deslocamento (Edição antes do brilho)
-      if (r.end.isBefore(novoRange.start)) {
-        // Calcula o número de linhas adicionadas/removidas
-        const linhasAdicionadas = (change.text.match(/\n/g) || []).length;
-        const linhasRemovidas = r.end.line - r.start.line;
-        const deltaLinhas = linhasAdicionadas - linhasRemovidas;
+      // 1. Offset adjustment (Edit before highlight)
+      if (r.end.isBefore(newRange.start)) {
+        // Calculate number of lines added/removed
+        const linesAdded = (change.text.match(/\n/g) || []).length;
+        const linesRemoved = r.end.line - r.start.line;
+        const deltaLines = linesAdded - linesRemoved;
         
-        // Calcula delta de caracteres (apenas para mesma linha)
+        // Calculate character delta (only for same line)
         const delta = change.text.length - change.rangeLength;
         
-        // Se a edição foi em linha anterior, ajusta linhas
-        if (r.end.line < novoRange.start.line) {
-          novoRange = new vscode.Range(
-            novoRange.start.translate(deltaLinhas, 0),
-            novoRange.end.translate(deltaLinhas, 0)
+        // If edit was on previous line, adjust lines
+        if (r.end.line < newRange.start.line) {
+          newRange = new vscode.Range(
+            newRange.start.translate(deltaLines, 0),
+            newRange.end.translate(deltaLines, 0)
           );
         } 
-        // Se for na mesma linha, ajusta colunas
+        // If on same line, adjust columns
         else {
-          novoRange = new vscode.Range(
-            novoRange.start.translate(0, delta),
-            novoRange.end.translate(0, delta)
+          newRange = new vscode.Range(
+            newRange.start.translate(0, delta),
+            newRange.end.translate(0, delta)
           );
         }
-        brilho.range = novoRange;
-        return [brilho];
+        highlight.range = newRange;
+        return [highlight];
       }
 
-      // 2. Intersecção ou Deletou tudo
-      if (novoRange.intersection(r)) {
-        // Para o motor do brilho atual, pois ele será "fragmentado" ou removido
-        clearInterval(brilho.interval);
-        brilho.decorationType.dispose();
+      // 2. Intersection or deleted everything
+      if (newRange.intersection(r)) {
+        // Stop current highlight motor as it will be "fragmented" or removed
+        clearInterval(highlight.interval);
+        highlight.decorationType.dispose();
 
-        if (r.contains(novoRange)) {
-          return []; // Brilho totalmente engolido pela edição
+        if (r.contains(newRange)) {
+          return []; // Highlight completely swallowed by edit
         }
 
-        // Se deletou parcialmente, criamos as sobras
-        const sobras = subtrairRanges(novoRange, r);
-        sobras.forEach((s) => {
-          sobrasParaReciar.push({ range: s, uri: brilho.uri, tipo: brilho.tipo, cor: brilho.cor });
+        // If partially deleted, create leftovers
+        const leftovers = subtractRanges(newRange, r);
+        leftovers.forEach((l) => {
+          leftoversToRecreate.push({ range: l, uri: highlight.uri, type: highlight.type, color: highlight.color });
         });
 
-        return []; // Remove o brilho original
+        return []; // Remove original highlight
       }
 
-      // Se o brilho sobreviveu ou só foi deslocado, atualizamos o range e mantemos
-      brilho.range = novoRange;
-      return [brilho];
+      // If highlight survived or just shifted, update range and keep it
+      highlight.range = newRange;
+      return [highlight];
     });
   }
 
 
 
-  // Agora inicia os novos brilhos (as sobras) - SEM adicionar à lista antes
-  if (editor && sobrasParaReciar.length > 0) {
-    sobrasParaReciar.forEach((sobra) => {
-      if (sobra.tipo === "estatico" && sobra.cor) {
-        iniciarBrilhoEstático(editor, sobra.range, sobra.cor);
+  // Now start new highlights (leftovers) - WITHOUT adding to list first
+  if (editor && leftoversToRecreate.length > 0) {
+    leftoversToRecreate.forEach((leftover) => {
+      if (leftover.type === "static" && leftover.color) {
+        startStaticHighlight(editor, leftover.range, leftover.color);
       } else {
-        iniciarBrilho(editor, sobra.range);
+        startHighlight(editor, leftover.range);
       }
     });
   }
 
   
-  // Reaplica as decorações após as mudanças para garantir que a UI está atualizada
+  // Reapply decorations after changes to ensure UI is updated
   if (editor) {
     const uri = editor.document.uri.toString();
-    brilhosAtivos.forEach((brilho) => {
-      if (brilho.uri === uri) {
-        editor.setDecorations(brilho.decorationType, [brilho.range]);
+    activeHighlights.forEach((highlight) => {
+      if (highlight.uri === uri) {
+        editor.setDecorations(highlight.decorationType, [highlight.range]);
       }
     });
   }
@@ -399,25 +363,25 @@ export function activate(context: vscode.ExtensionContext) {
   let configurarCorDisposable = vscode.commands.registerCommand(
     "extension.configurarCorAtalho",
     async () => {
-      const opcoes = [
-        { label: "🌈 Rainbow (Padrão)", description: "Efeito de cores alternadas", valor: "rainbow" },
-        { label: "🟨 Amarelo", description: "#FFFF00", valor: "#FFFF00" },
-        { label: "🎨 Cor Personalizada", description: "Escolher outra cor", valor: "personalizado" },
+      const options = [
+        { label: "🌈 Rainbow (Default)", description: "Animated color effect", value: "rainbow" },
+        { label: "🟨 Yellow", description: "#FFFF00", value: "#FFFF00" },
+        { label: "🎨 Custom Color", description: "Pick any color", value: "personalizado" },
       ];
 
-      const selecionada = await vscode.window.showQuickPick(opcoes, {
-        placeHolder: "Escolha a cor para o atalho CTRL+SHIFT+L",
+      const selected = await vscode.window.showQuickPick(options, {
+        placeHolder: "Choose color for CTRL+SHIFT+L shortcut",
       });
 
-      if (!selecionada) return;
+      if (!selected) return;
 
-      if (selecionada.valor === "personalizado") {
-        // Abrir painel de cor personalizada
-        abrirConfigurador(context);
+      if (selected.value === "personalizado") {
+        // Open custom color panel
+        openColorConfigurator(context);
       } else {
-        corAtalho = selecionada.valor;
-        context.globalState.update('corAtalho', corAtalho);
-        vscode.window.showInformationMessage(`Cor do atalho alterada para: ${selecionada.label}`);
+        shortcutColor = selected.value;
+        context.globalState.update('shortcutColor', shortcutColor);
+        vscode.window.showInformationMessage(`Shortcut color changed to: ${selected.label}`);
       }
     }
   );
@@ -427,15 +391,15 @@ export function activate(context: vscode.ExtensionContext) {
     stopDisposable,
     editorChangeListener,
     changeListener,
-    brilharLinhaDisposable,
+    highlightLineDisposable,
     configurarCorDisposable
   );
 }
 
-function abrirConfigurador(context: vscode.ExtensionContext) {
+function openColorConfigurator(context: vscode.ExtensionContext) {
   const panel = vscode.window.createWebviewPanel(
     "colorPicker",
-    "Configurador de Cor - RGB Highlighter",
+    "Color Configurator - RGB Highlighter",
     vscode.ViewColumn.One,
     { enableScripts: true }
   );
@@ -446,7 +410,7 @@ function abrirConfigurador(context: vscode.ExtensionContext) {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Configurador de Cor</title>
+      <title>Color Configurator</title>
       <style>
         * {
           margin: 0;
@@ -631,11 +595,11 @@ function abrirConfigurador(context: vscode.ExtensionContext) {
     </head>
     <body>
       <div class="container">
-        <h1>🎨 Escolha uma Cor</h1>
-        <p class="subtitle">Configure a cor para o atalho CTRL+SHIFT+L</p>
+        <h1>🎨 Choose a Color</h1>
+        <p class="subtitle">Configure color for CTRL+SHIFT+L shortcut</p>
 
         <div class="color-section">
-          <label for="colorPicker">Cor Personalizada</label>
+          <label for="colorPicker">Custom Color</label>
           <div class="color-input-wrapper">
             <input type="color" id="colorPicker" value="#FFFF00">
             <input type="text" id="hexInput" class="hex-display" value="#FFFF00" placeholder="#FFFFFF">
@@ -643,27 +607,27 @@ function abrirConfigurador(context: vscode.ExtensionContext) {
         </div>
 
         <div class="color-section">
-          <label>Cores Pré-definidas</label>
+          <label>Preset Colors</label>
           <div class="presets">
-            <button class="preset-btn active" data-color="#FFFF00">🟨 Amarelo</button>
-            <button class="preset-btn" data-color="#FF5733">🔴 Vermelho</button>
-            <button class="preset-btn" data-color="#33FF57">🟢 Verde</button>
-            <button class="preset-btn" data-color="#3357FF">🔵 Azul</button>
+            <button class="preset-btn active" data-color="#FFFF00">🟨 Yellow</button>
+            <button class="preset-btn" data-color="#FF5733">🔴 Red</button>
+            <button class="preset-btn" data-color="#33FF57">🟢 Green</button>
+            <button class="preset-btn" data-color="#3357FF">🔵 Blue</button>
             <button class="preset-btn" data-color="#FF33F5">🟣 Magenta</button>
-            <button class="preset-btn" data-color="#33FFF5">🟦 Ciano</button>
-            <button class="preset-btn" data-color="#FFB833">🟠 Laranja</button>
-            <button class="preset-btn" data-color="#FF33B8">🎀 Rosa</button>
+            <button class="preset-btn" data-color="#33FFF5">🟦 Cyan</button>
+            <button class="preset-btn" data-color="#FFB833">🟠 Orange</button>
+            <button class="preset-btn" data-color="#FF33B8">🎀 Pink</button>
           </div>
         </div>
 
         <div class="preview">
-          <p class="preview-label">Prévia</p>
-          <div class="preview-text" style="--preview-color: #FFFF00">Exemplo de Destaque</div>
+          <p class="preview-label">Preview</p>
+          <div class="preview-text" style="--preview-color: #FFFF00">Example Highlight</div>
         </div>
 
         <div class="button-group">
-          <button class="btn-save" onclick="salvar()">💾 Salvar</button>
-          <button class="btn-cancel" onclick="cancelar()">✕ Cancelar</button>
+          <button class="btn-save" onclick="save()">💾 Save</button>
+          <button class="btn-cancel" onclick="cancel()">✕ Cancel</button>
         </div>
       </div>
 
@@ -677,8 +641,8 @@ function abrirConfigurador(context: vscode.ExtensionContext) {
         colorPicker.addEventListener('input', (e) => {
           const color = e.target.value;
           hexInput.value = color.toUpperCase();
-          atualizarPreview(color);
-          atualizarPresets(color);
+          updatePreview(color);
+          updatePresets(color);
         });
 
         hexInput.addEventListener('input', (e) => {
@@ -686,8 +650,8 @@ function abrirConfigurador(context: vscode.ExtensionContext) {
           if (!color.startsWith('#')) color = '#' + color;
           if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
             colorPicker.value = color;
-            atualizarPreview(color);
-            atualizarPresets(color);
+            updatePreview(color);
+            updatePresets(color);
           }
         });
 
@@ -696,16 +660,16 @@ function abrirConfigurador(context: vscode.ExtensionContext) {
             const color = btn.dataset.color;
             colorPicker.value = color;
             hexInput.value = color;
-            atualizarPreview(color);
-            atualizarPresets(color);
+            updatePreview(color);
+            updatePresets(color);
           });
         });
 
-        function atualizarPreview(color) {
+        function updatePreview(color) {
           previewText.style.setProperty('--preview-color', color);
         }
 
-        function atualizarPresets(color) {
+        function updatePresets(color) {
           presets.forEach(btn => {
             btn.classList.remove('active');
             if (btn.dataset.color.toUpperCase() === color.toUpperCase()) {
@@ -714,13 +678,13 @@ function abrirConfigurador(context: vscode.ExtensionContext) {
           });
         }
 
-        function salvar() {
-          const cor = hexInput.value;
-          vscode.postMessage({ comando: 'salvar', cor: cor });
+        function save() {
+          const color = hexInput.value;
+          vscode.postMessage({ command: 'save', color: color });
         }
 
-        function cancelar() {
-          vscode.postMessage({ comando: 'cancelar' });
+        function cancel() {
+          vscode.postMessage({ command: 'cancel' });
         }
       </script>
     </body>
@@ -730,25 +694,25 @@ function abrirConfigurador(context: vscode.ExtensionContext) {
   panel.webview.html = htmlContent;
 
   panel.webview.onDidReceiveMessage((message) => {
-    if (message.comando === "salvar") {
-      corAtalho = message.cor;
-      context.globalState.update('corAtalho', corAtalho);
-      vscode.window.showInformationMessage(`Cor do atalho alterada para: ${message.cor}`);
+    if (message.command === "save") {
+      shortcutColor = message.color;
+      context.globalState.update('shortcutColor', shortcutColor);
+      vscode.window.showInformationMessage(`Shortcut color changed to: ${message.color}`);
       panel.dispose();
-    } else if (message.comando === "cancelar") {
+    } else if (message.command === "cancel") {
       panel.dispose();
     }
   });
 }
 
-function limparTodosOsBrilhos() {
-  brilhosAtivos.forEach((brilho) => {
-    clearInterval(brilho.interval);
-    brilho.decorationType.dispose();
+function clearAllHighlights() {
+  activeHighlights.forEach((highlight) => {
+    clearInterval(highlight.interval);
+    highlight.decorationType.dispose();
   });
-  brilhosAtivos = [];
+  activeHighlights = [];
 }
 
 export function deactivate() {
-  limparTodosOsBrilhos();
+  clearAllHighlights();
 }

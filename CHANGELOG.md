@@ -1,69 +1,72 @@
 # Changelog
 
-## [1.1.0] - 2026-04-03
+## [1.1.0] - 2026-04-04
 
-### ✨ Novas Funcionalidades
+### ✨ New Features
 
-- **Marcador Amarelo Estático:** Adicionada marcação estática em amarelo com efeito neon ao usar `Ctrl+Shift+L` / `Cmd+Shift+L`, imitando marcadores de texto do mundo real.
-- **abcd:** abcd.
+- **Color Configurator:** Added a color picker to customize the shortcut highlight color (CTRL+SHIFT+L). Choose from Rainbow (animated), Yellow, or any custom color.
+- **Shortcut Enhancement:** The line highlight shortcut now defaults to Rainbow animated effect, with support for custom static colors.
+- **Color Persistence:** Your custom color selection is now saved and restored between VS Code sessions.
+- **Full Internationalization:** Complete English translation of the entire project including UI, code, and documentation for global accessibility.
 
-### 🐛 Correções de Bugs (Fixes)
+### 🐛 Bug Fixes
 
-- **Fim do flickering inicial (#22):** Resolvido o problema de cintilação ao iniciar ou reiniciar brilhos; as decorações agora são aplicadas com cor imediata, eliminando o frame vazio antes da primeira animação.
-- **Preservação de tipo de brilho ao editar (#36):** Corrigido bug onde edições dentro de um trecho destacado alternavam o brilho rainbow para amarelo ou vice-versa. Agora o tipo de destaque é mantido ao fragmentar durante edição.
-- **Deseleção após aplicar efeito (#36):** Os comandos `extension.brilharRGB` e `extension.brilharLinha` agora desselacionam o texto após aplicar o efeito, prevenindo que o usuário sobrescreva acidentalmente o trecho ao pressionar uma tecla.
-- **Funcionamento de stopDisposable ao editar (#36):** Resolvido problema onde `extension.pararBrilho` falhava em encontrar brilhos após edições dentro do trecho destacado, causado por reordenação incorreta de brilhos durante fragmentação.
+- **Initial Flickering Fix (#22):** Resolved the flickering issue when starting or restarting highlights; decorations are now applied with immediate color, eliminating the empty frame before the first animation.
+- **Highlight Type Preservation (#36):** Fixed bug where edits within a highlighted snippet would toggle the highlight between rainbow and static color. The highlight type is now maintained when fragmenting during edits.
+- **Deselection After Effect (#36):** The `RGB: Highlight Text with Rainbow` and `RGB: Highlight Current Line` commands now deselect the text after applying the effect, preventing accidental overwrite when you press a key.
+- **Remove Highlight Fix (#36):** Resolved issue where `RGB: Remove Highlight` failed to find highlights after edits within the highlighted area, caused by incorrect reordering of highlights during fragmentation.
+- **Overlay Prevention:** Fixed overlap when applying the line shortcut on text already highlighted with rainbow effect.
+- **Line Adjustment:** Fixed issue where highlight would shift when typing in previous lines.
 
 ---
 
 ## [1.0.0] - 2026-04-02
 
-### ✨ Novas Funcionalidades
+### ✨ New Features
 
-- **Comando RGB por linha:** adicionada nova ação `extension.brilharLinha` (atalho `Ctrl+Shift+L` / `Cmd+Shift+L`) para aplicar efeito RGB na linha atual.
-- **Artefato de atualização de seleções:** o efeito agora acompanha edições de texto e mantém ranges atualizados automaticamente ao digitar/excluir dentro/outside do destaque.
+- **Line Highlight Command:** Added new action `extension.highlightLine` (shortcut `Ctrl+Shift+L` / `Cmd+Shift+L`) to apply RGB effect on the current line.
+- **Dynamic Range Update:** The effect now follows text edits and maintains updated ranges automatically when typing/deleting inside/outside the highlight.
 
-### 🐛 Correções de Bugs (Fixes)
+### 🐛 Bug Fixes
 
-- **Parar apenas seleção ativa (#28):** `extension.pararBrilho` agora remove apenas os intervalos intersectados pela seleção atual, preservando outros destaques ativos no mesmo arquivo.
-- **Evita duplicação de animação (#21):** fim do problema de múltiplas animações no mesmo range quando reativa o comando repetidas vezes.
+- **Deactivate Only Active Selection (#28):** `RGB: Remove Highlight` now removes only the ranges intersected by the current selection, preserving other active highlights in the same file.
+- **Prevent Animation Duplication (#21):** Fixed issue with multiple animations on the same range when reactivating the command repeatedly.
 
-### ⚙️ Melhorias Técnicas
+### ⚙️ Technical Improvements
 
-- **Refatoração de gestão de efeitos:** isolado `BrilhoInstancia` e lógica de `iniciarBrilho`, reduzindo vazamento e melhorando previsibilidade sob edição dinâmica.
-- **Reaplicação automática:** ao trocar de aba/editor, o estado do highlight é reaplicado no editor ativado.
+- **Effect Management Refactor:** Isolated `HighlightInstance` and `startHighlight` logic, reducing memory leaks and improving predictability under dynamic editing.
+- **Automatic Reapplication:** When switching tabs/editors, the highlight state is reapplied in the activated editor.
 
 ---
 
 ## [0.1.1] - 2026-03-31
 
-### 🐛 Correções de Bugs (Fixes)
+### 🐛 Bug Fixes
 
-- **Bloqueio de Múltiplas Instâncias (#16):** Corrigido o bug onde clicar repetidamente em "Ativar Brilho RGB!" no mesmo trecho de texto criava várias animações sobrepostas, causando um efeito de "pisca-pisca" acelerado.
-- **Validação de Range:** Implementada a verificação `isEqual` para garantir que cada `Range` específico em um arquivo (`URI`) possua apenas um intervalo de animação ativo por vez.
+- **Multiple Instances Lockout (#16):** Fixed bug where repeatedly clicking "RGB: Highlight Text with Rainbow" on the same text snippet created multiple overlapping animations, causing an accelerated "flickering" effect.
+- **Range Validation:** Implemented `isEqual` check to ensure each specific `Range` in a file (`URI`) has only one active animation interval at a time.
 
-### ⚙️ Melhorias Técnicas
+### ⚙️ Technical Improvements
 
-- **Feedback de Interface:** Adicionada uma notificação informativa (`showInformationMessage`) para alertar o usuário quando ele tenta ativar o brilho em um trecho que já está animado.
-- **Estabilização de Ciclo:** Ajuste no fluxo lógico para interromper a criação de novos `setInterval` caso a validação de existência retorne positiva.
+- **UI Feedback:** Added informative notification (`showInformationMessage`) to alert the user when trying to activate the highlight on a snippet that's already animated.
+- **Cycle Stabilization:** Adjusted the logical flow to prevent the creation of new `setInterval` if the existence validation returns positive.
 
 ---
 
 ## [0.1.0] - 2026-03-30
 
-### ✨ Novas Funcionalidades
+### ✨ New Features
 
-- **Suporte a Múltiplos Destaques:** Agora é possível aplicar o efeito RGB em diversos trechos de texto simultaneamente sem que um remova o outro.
+- **Multiple Highlight Support:** Now possible to apply the RGB effect to various text snippets simultaneously without one removing the other.
 
-### 🐛 Correções de Bugs (Fixes)
+### 🐛 Bug Fixes
 
-- **Persistência de Destaque (#5):** Corrigido o problema onde o brilho desaparecia ao trocar de aba ou navegar entre arquivos. O efeito agora é reaplicado automaticamente ao retornar ao editor.
+- **Highlight Persistence (#5):** Fixed issue where the highlight would disappear when switching tabs or navigating between files. The effect is now automatically reapplied when returning to the editor.
+- **Selection Overlap (#1):** Resolved the technical limitation that prevented maintaining more than one active highlight at a time.
 
-* **Sobreposição de Seleção (#1):** Resolvida a limitação técnica que impedia a manutenção de mais de um destaque ativo por vez.
+### ⚙️ Technical Improvements
 
-### ⚙️ Melhorias Técnicas
-
-- **Gerenciamento de Memória:** Implementação do descarte automático de `TextEditorDecorationType` obsoletos para prevenir vazamentos de memória durante as animações.
-- **Refatoração de Estado:** Migração de variáveis globais simples para uma estrutura de lista indexada por URI, garantindo maior estabilidade no rastreamento dos intervalos ativos.
+- **Memory Management:** Implemented automatic disposal of obsolete `TextEditorDecorationType` to prevent memory leaks during animations.
+- **State Refactoring:** Migration from simple global variables to a URI-indexed list structure, ensuring greater stability in tracking active intervals.
 
 ---
