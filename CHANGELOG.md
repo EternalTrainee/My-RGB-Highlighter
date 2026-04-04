@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.2.1] - 2026-04-06
+
+### 🐛 Bug Fixes
+
+- **Highlight Removal After Partial Removal (#42):** Fixed critical bug where attempting to remove the highlight effect from a second fragment would fail after earlier partial removal and text editing. The system would fail to locate the target highlight even though it existed.
+- **Range Offset Calculation at Boundaries (#42):** Fixed incorrect range offset calculation that failed to adjust highlight positions when text edits occurred exactly at the boundary where two highlight fragments met. This caused the second fragment to lose synchronization.
+- **Intelligent Cursor Detection Strategy (#42):** Redesigned cursor position detection with a robust three-tier fallback strategy:
+  - **Tier 1:** Exact match (cursor inside or at boundary of highlight)
+  - **Tier 2:** Smart preference (highlights starting after cursor preferred over those ending before)
+  - **Tier 3:** Minimum distance calculation for edge cases
+  - This ensures correct highlight selection even when the cursor is positioned in the gap between multiple fragments.
+- **Highlight Selection Accuracy with Multiple Fragments (#42):** Resolved ambiguity that could cause the wrong fragment to be selected for removal when multiple highlight fragments existed on the same line, especially after sequential edit operations.
+
+### ⚙️ Technical Improvements
+
+- **Enhanced Text Change Listener:** Improved the change event handler to correctly process multi-range scenarios with proper offset calculations for all edge cases.
+- **Range Validation:** Added validation to ensure highlight ranges remain within document bounds after all text modifications.
+
+---
+
 ## [1.2.0] - 2026-04-06
 
 ### ✨ New Features
