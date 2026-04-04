@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0] - 2026-04-06
+
+### ✨ New Features
+
+- **Smart Toggle Shortcut:** The `Ctrl+Shift+L` / `Cmd+Shift+L` shortcut now features intelligent toggle behavior:
+  - **Line completely highlighted** → Press to deactivate and remove the highlight
+  - **Line partially highlighted** → Press to remove partial highlights and reapply to the entire line (useful after editing text)
+  - **Line not highlighted** → Press to apply the configured highlight color to the entire line
+- **Seamless Workflow:** No need for separate commands to toggle on/off; one shortcut handles all scenarios intelligently.
+
+---
+
 ## [1.1.0] - 2026-04-04
 
 ### ✨ New Features

@@ -72,6 +72,16 @@ export function activate(context: vscode.ExtensionContext) {
       textDecoration: `none; text-shadow: 0 0 10px ${color}, 0 0 20px ${color};`,
       outline: `1px solid ${color}`,
       rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
+      overviewRulerColor: color,
+      overviewRulerLane: vscode.OverviewRulerLane.Full,
+      backgroundColor: color + '33', // Adiciona o fundo suave para aparecer no Minimap
+
+      dark: {
+        overviewRulerColor: color
+      },
+      light: {
+        overviewRulerColor: color
+      }
     });
   };
 
@@ -117,6 +127,16 @@ export function activate(context: vscode.ExtensionContext) {
       textDecoration: `none; text-shadow: 0 0 10px ${color}, 0 0 20px ${color};`,
       outline: `1px solid ${color}`,
       rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
+      overviewRulerColor: color,
+      overviewRulerLane: vscode.OverviewRulerLane.Full,
+      backgroundColor: color + '33', // Adiciona o fundo suave para aparecer no Minimap
+
+      dark: {
+        overviewRulerColor: color
+      },
+      light: {
+        overviewRulerColor: color
+      }
     });
 
     editor.setDecorations(decoration, [range]);
@@ -208,6 +228,35 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.window.setStatusBarMessage(`Deactivated ${affected.length} effect(s).`, 2000);
     }
   );
+  // Helper function to check if a line is completely highlighted
+  function isLineCompletelyHighlighted(lineRange: vscode.Range, highlightsOnLine: HighlightInstance[]): boolean {
+    if (highlightsOnLine.length === 0) return false;
+
+    // Sort highlights by start position
+    const sortedHighlights = [...highlightsOnLine].sort((a, b) => 
+      a.range.start.compareTo(b.range.start)
+    );
+
+    // Check if the first highlight starts at line start
+    if (!sortedHighlights[0].range.start.isEqual(lineRange.start)) {
+      return false;
+    }
+
+    // Check if the last highlight ends at line end
+    if (!sortedHighlights[sortedHighlights.length - 1].range.end.isEqual(lineRange.end)) {
+      return false;
+    }
+
+    // Check if highlights cover the entire line without gaps
+    for (let i = 0; i < sortedHighlights.length - 1; i++) {
+      if (!sortedHighlights[i].range.end.isEqual(sortedHighlights[i + 1].range.start)) {
+        return false; // Gap found
+      }
+    }
+
+    return true;
+  }
+
   let highlightLineDisposable = vscode.commands.registerCommand(
   "extension.brilharLinha",
   () => {
@@ -218,34 +267,43 @@ export function activate(context: vscode.ExtensionContext) {
     const cursorPosition = editor.selection.active;
     const line = editor.document.lineAt(cursorPosition.line);
 
-    // Remove EXPLICITLY all highlights that intersect with the line
+    // Find all highlights that intersect with the line
     const highlightsOnLine = activeHighlights.filter(h => 
       h.uri === currentUri && !!h.range.intersection(line.range)
     );
-    
-    highlightsOnLine.forEach(highlight => {
-      clearInterval(highlight.interval);
-      highlight.decorationType.dispose();
-      activeHighlights = activeHighlights.filter(h => h.id !== highlight.id);
-    });
 
-    // 1. Select entire line (from first to last character)
-    const newSelection = new vscode.Selection(
-      line.range.start,
-      line.range.end
-    );
-    editor.selection = newSelection;
+    // Check if the line is completely highlighted
+    const isCompletelyHighlighted = isLineCompletelyHighlighted(line.range, highlightsOnLine);
 
-    // 2. Apply highlighting to the line with shortcut color
-    if (shortcutColor === "rainbow") {
-      // If rainbow, apply animated effect
-      startHighlight(editor, line.range);
+    if (isCompletelyHighlighted) {
+      // Toggle OFF: Remove all highlights from the line
+      highlightsOnLine.forEach(highlight => {
+        clearInterval(highlight.interval);
+        highlight.decorationType.dispose();
+        activeHighlights = activeHighlights.filter(h => h.id !== highlight.id);
+      });
+      vscode.window.setStatusBarMessage("Highlight removed.", 2000);
     } else {
-      // Otherwise apply static color
-      startStaticHighlight(editor, line.range, shortcutColor);
+      // Toggle ON: Remove partial highlights and reapply to entire line
+      highlightsOnLine.forEach(highlight => {
+        clearInterval(highlight.interval);
+        highlight.decorationType.dispose();
+        activeHighlights = activeHighlights.filter(h => h.id !== highlight.id);
+      });
+
+      // Apply highlighting to the entire line with shortcut color
+      if (shortcutColor === "rainbow") {
+        // If rainbow, apply animated effect
+        startHighlight(editor, line.range);
+      } else {
+        // Otherwise apply static color
+        startStaticHighlight(editor, line.range, shortcutColor);
+      }
+
+      vscode.window.setStatusBarMessage("Line highlighted.", 2000);
     }
 
-    // 3. Deselect text to prevent accidental overwrite
+    // Deselect text to prevent accidental overwrite
     editor.selection = new vscode.Selection(line.range.end, line.range.end);
   }
 );
