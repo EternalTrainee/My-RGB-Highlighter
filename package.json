@@ -49,7 +49,7 @@
       },
       {
         "command": "extension.configurarCorAtalho",
-        "title": "RGB: Configure Shortcut Color"
+        "title": "RGB: Set Color"
       }
     ],
     "keybindings": [
