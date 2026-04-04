@@ -1,53 +1,59 @@
 # My RGB Highlighter
 
-Uma extensão para Visual Studio Code que adiciona um efeito de brilho RGB animado ao texto selecionado.
+A Visual Studio Code extension that adds animated RGB highlight effects to selected text.
 
-## 🌈 Recursos
+## 🌈 Features
 
-- **Brilho RGB Animado**: Realça o texto selecionado com uma animação de cores RGB fluida
-- **Marcador Amarelo Estático**: Marca linhas inteiras em amarelo com efeito neon
-- **Commands no Menu de Contexto**: Ative e desative o brilho facilmente pelo menu de contexto do editor
-- **Animação Suave**: Transição contínua entre cores HSL para um efeito visual impressionante
-- **Text-Shadow Effect**: Cria um efeito de "glow" sutil ao redor do texto
-- **Preservação de Tipo**: Mantém o tipo de destaque (animado ou estático) mesmo ao editar o texto dentro da marcação
+- **Animated Rainbow Highlight**: Highlights selected text with a smooth flowing RGB color animation
+- **Static Color Highlight**: Marks text with a static color and neon glow effect
+- **Configurable Colors**: Choose between Rainbow (animated), Yellow, or any custom color for all highlights
+- **Unified Color Configuration**: Both manual and line highlighting use the same configured color
+- **Context Menu Commands**: Easily enable and disable highlights from the editor's context menu
+- **Smooth Animation**: Continuous transition between HSL colors for an impressive visual effect
+- **Text-Shadow Effect**: Creates a subtle "glow" effect around the text
+- **Highlight Type Preservation**: Maintains the highlight type (animated or static) even when editing text within the marked area
+- **Persistent Color Preference**: Saves your custom color choices between VS Code sessions
 
-## 📋 Como Usar
+## 📋 How to Use
 
-### Comandos e Atalhos
-| Ação | Comando (Paleta de Comandos) | Atalho |
+### Commands and Shortcuts
+| Action | Command (Command Palette) | Shortcut |
 | :--- | :--- | :--- |
-| **Ativar Brilho** | `RGB: Ativar Brilho RGB!` | - |
-| **Brilhar Linha** | `RGB: Brilhar Linha Atual` | `Ctrl+Shift+L` (Win/Lin) / `Cmd+Shift+L` (Mac) |
-| **Remover Brilho** | `RGB: Desativar Brilho RGB` | - |
+| **Highlight Text** | `RGB: Highlight Text` | - |
+| **Highlight Line** | `RGB: Highlight Current Line` | `Ctrl+Shift+L` (Win/Lin) / `Cmd+Shift+L` (Mac) |
+| **Remove Highlight** | `RGB: Remove Highlight` | - |
+| **Configure Color** | `RGB: Configure Shortcut Color` | - |
 
-### No Editor
-1. **Destaque Manual:** Selecione qualquer bloco de texto > Clique com o botão direito > **"Ativar Brilho RGB!"**.
-2. **Destaque de Linha:** Use `Ctrl+Shift+L` (Win/Lin) ou `Cmd+Shift+L` (Mac) para marcar a linha inteira em **amarelo estático com efeito neon**, sem necessidade de seleção prévia.
-3. **Destaque Cirúrgico:** Para remover o brilho de apenas uma palavra dentro de uma frase que já brilha, selecione a palavra e use o comando **"Desativar Brilho RGB"**. O restante da frase continuará brilhando!
-4. **Edição Segura:** Após aplicar qualquer destaque, o texto é automaticamente desselacionado para evitar sobrescrita acidental ao pressionar uma tecla.
+### In the Editor
+1. **Manual Highlight:** Select any block of text > Right-click > **"RGB: Highlight Text"**. The highlight will use the color configured via `RGB: Configure Shortcut Color` (Rainbow by default).
+2. **Line Highlight:** Use `Ctrl+Shift+L` (Win/Lin) or `Cmd+Shift+L` (Mac) to highlight the entire current line with your configured color.
+3. **Configure Color:** Right-click or use command palette to access **"RGB: Configure Shortcut Color"** to choose between Rainbow (animated), Yellow, or any custom color for both manual and line highlights.
+4. **Surgical Highlight:** To remove the highlight from just one word within a sentence that's already highlighted, select the word and use the **"RGB: Remove Highlight"** command. The rest of the sentence will continue to glow!
+5. **Safe Editing:** After applying any highlight, the text is automatically deselected to prevent accidental overwrite when you press a key.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/EternalTrainee/My-RGB-Highlighter/main/images/sample.gif" alt="RGB Highlighter Demo"/>
 </p>
-A animação será exibida apenas enquanto o comando estiver ativo. O brilho RGB mudará continuamente de cor, criando um efeito visual vibrante.
 
-## 🛠️ Requisitos
+The animation is displayed only while the command is active. The RGB highlight will continuously change color, creating a vibrant visual effect.
 
-- Visual Studio Code 1.96.0 ou superior
+## 🛠️ Requirements
 
-## ⚙️ Como Compilar
+- Visual Studio Code 1.96.0 or higher
+
+## ⚙️ How to Build
 
 ```bash
-# Compilar TypeScript
+# Compile TypeScript
 npm run compile
 
-# Compilar em modo watch
+# Compile in watch mode
 npm run watch
 
-# Executar testes
+# Run tests
 npm run test
 
-# Lint do código
+# Lint code
 npm run lint
 ```
 
@@ -55,19 +61,23 @@ npm run lint
 
 ### 1.1.0 - 2026-04-04
 
-### 🚀 Novos Recursos
+### 🚀 New Features
 
-- **Marcador Amarelo Estático:** Adicionada marcação estática em amarelo com efeito neon ao usar `Ctrl+Shift+L` / `Cmd+Shift+L`, imitando marcadores de texto do mundo real.
-- **abcd:** abcd.
+- **Color Configurator:** Added a color picker to customize the shortcut highlight color (CTRL+SHIFT+L). Choose from Rainbow (animated), Yellow, or any custom color.
+- **Shortcut Enhancement:** The line highlight shortcut now defaults to Rainbow animated effect, with support for custom static colors.
+- **Color Persistence:** Your custom color selection is now saved and restored between VS Code sessions.
+- **Full Internationalization:** Complete English translation of the entire project including UI, documentation, and code for global accessibility.
 
-### 🐛 Correções de Bugs (Fixes)
+### 🐛 Bug Fixes
 
-- **Fim do flickering inicial (#22):** Resolvido o problema de cintilação ao iniciar ou reiniciar brilhos; as decorações agora são aplicadas com cor imediata, eliminando o frame vazio antes da primeira animação.
-- **Preservação de tipo de brilho ao editar (#36):** Corrigido bug onde edições dentro de um trecho destacado alternavam o brilho rainbow para amarelo ou vice-versa. Agora o tipo de destaque é mantido ao fragmentar durante edição.
-- **Deseleção após aplicar efeito (#36):** Os comandos `extension.brilharRGB` e `extension.brilharLinha` agora desselacionam o texto após aplicar o efeito, prevenindo que o usuário sobrescreva acidentalmente o trecho ao pressionar uma tecla.
-- **Funcionamento de stopDisposable ao editar (#36):** Resolvido problema onde `extension.pararBrilho` falhava em encontrar brilhos após edições dentro do trecho destacado, causado por reordenação incorreta de brilhos durante fragmentação.
+- **Initial Flickering Fix (#22):** Resolved the flickering issue when starting or restarting highlights; decorations are now applied with immediate color, eliminating the empty frame before the first animation.
+- **Highlight Type Preservation (#36):** Fixed bug where edits within a highlighted snippet would toggle the highlight between rainbow and static color. The highlight type is now maintained when fragmenting during edits.
+- **Deselection After Effect (#36):** The `RGB: Highlight Text with Rainbow` and `RGB: Highlight Current Line` commands now deselect the text after applying the effect, preventing accidental overwrite when you press a key.
+- **Remove Highlight Fix (#36):** Resolved issue where `RGB: Remove Highlight` failed to find highlights after edits within the highlighted area, caused by incorrect reordering of highlights during fragmentation.
+- **Overlay Prevention:** Fixed overlap when applying the line shortcut on text already highlighted with rainbow effect.
+- **Line Adjustment:** Fixed issue where highlight would shift when typing in previous lines.
 
-## 📚 Para mais informações
+## 📚 For More Information
 
 - [VS Code Extension API](https://code.visualstudio.com/api)
 - [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
@@ -75,4 +85,4 @@ npm run lint
 
 ---
 
-**Divirta-se com o brilho RGB!** 🎨✨
+**Have fun with RGB highlights!** 🎨✨
