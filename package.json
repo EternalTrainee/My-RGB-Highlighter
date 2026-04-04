@@ -1,10 +1,21 @@
 {
   "name": "my-rgb-highlighter",
   "displayName": "My RGB Highlighter",
-  "description": "My RGB Highlighter",
+  "description": "Animated RGB highlight effects for selected text with smart toggle, color customization, and persistent preferences",
   "publisher": "EternalTrainee",
   "icon": "images/icon.png",
-  "version": "1.1.0",
+  "version": "1.2.0",
+  "keywords": [
+    "highlight",
+    "rgb",
+    "animation",
+    "color",
+    "glow",
+    "neon",
+    "text-decoration",
+    "productivity",
+    "visual"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/EternalTrainee/My-RGB-Highlighter.git"
@@ -17,6 +28,7 @@
     "vscode": "^1.96.0"
   },
   "categories": [
+    "Visualization",
     "Other"
   ],
   "activationEvents": [],
@@ -25,19 +37,19 @@
     "commands": [
       {
         "command": "extension.brilharRGB",
-        "title": "Ativar Brilho RGB!"
+        "title": "RGB: Highlight Text"
       },
       {
         "command": "extension.pararBrilho",
-        "title": "Desativar Brilho RGB"
+        "title": "RGB: Remove Highlight"
       },
       {
         "command": "extension.brilharLinha",
-        "title": "RGB: Brilhar Linha Atual"
+        "title": "RGB: Highlight Current Line"
       },
       {
         "command": "extension.configurarCorAtalho",
-        "title": "RGB: Configurar Cor do Atalho"
+        "title": "RGB: Configure Shortcut Color"
       }
     ],
     "keybindings": [

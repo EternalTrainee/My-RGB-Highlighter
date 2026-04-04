@@ -8,6 +8,7 @@ A Visual Studio Code extension that adds animated RGB highlight effects to selec
 - **Static Color Highlight**: Marks text with a static color and neon glow effect
 - **Configurable Colors**: Choose between Rainbow (animated), Yellow, or any custom color for all highlights
 - **Unified Color Configuration**: Both manual and line highlighting use the same configured color
+- **Smart Toggle Shortcut**: The line highlight shortcut intelligently toggles on/off or reapplies when partially highlighted
 - **Context Menu Commands**: Easily enable and disable highlights from the editor's context menu
 - **Smooth Animation**: Continuous transition between HSL colors for an impressive visual effect
 - **Text-Shadow Effect**: Creates a subtle "glow" effect around the text
@@ -26,7 +27,10 @@ A Visual Studio Code extension that adds animated RGB highlight effects to selec
 
 ### In the Editor
 1. **Manual Highlight:** Select any block of text > Right-click > **"RGB: Highlight Text"**. The highlight will use the color configured via `RGB: Configure Shortcut Color` (Rainbow by default).
-2. **Line Highlight:** Use `Ctrl+Shift+L` (Win/Lin) or `Cmd+Shift+L` (Mac) to highlight the entire current line with your configured color.
+2. **Line Highlight with Smart Toggle:** Use `Ctrl+Shift+L` (Win/Lin) or `Cmd+Shift+L` (Mac) to intelligently toggle the highlight on/off:
+   - **First press:** Highlights the entire current line with your configured color
+   - **Second press (if entirely highlighted):** Removes the highlight
+   - **Press while partially highlighted:** Removes all highlights and reapplies to the entire line (useful after text edits that expanded the line)
 3. **Configure Color:** Right-click or use command palette to access **"RGB: Configure Shortcut Color"** to choose between Rainbow (animated), Yellow, or any custom color for both manual and line highlights.
 4. **Surgical Highlight:** To remove the highlight from just one word within a sentence that's already highlighted, select the word and use the **"RGB: Remove Highlight"** command. The rest of the sentence will continue to glow!
 5. **Safe Editing:** After applying any highlight, the text is automatically deselected to prevent accidental overwrite when you press a key.
@@ -58,6 +62,16 @@ npm run lint
 ```
 
 ## 📝 Release Notes
+
+### 1.2.0 - 2026-04-06
+
+### 🚀 New Features
+
+- **Smart Toggle Shortcut:** The `Ctrl+Shift+L` / `Cmd+Shift+L` shortcut now features intelligent toggle behavior:
+  - Completely highlighted line → Press to deactivate
+  - Partially highlighted line → Press to remove and reapply to entire line
+  - Non-highlighted line → Press to apply highlight
+- **Seamless Workflow:** One shortcut intelligently handles all highlight states without needing separate commands.
 
 ### 1.1.0 - 2026-04-04
 
