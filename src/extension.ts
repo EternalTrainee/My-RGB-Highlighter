@@ -17,7 +17,13 @@ let brilhosAtivos: BrilhoInstancia[] = [];
 // Cor amarela para marcação estática
 const COR_AMARELA = "#FFFF00";
 
+// Cor do atalho (rainbow é o default)
+let corAtalho = "rainbow";
+
 export function activate(context: vscode.ExtensionContext) {
+  // Carrega a cor do atalho salva, ou usa 'rainbow' como padrão
+  corAtalho = context.globalState.get('corAtalho') || 'rainbow';
+
   // Comando para ativar o brilho RGB
   let disposable = vscode.commands.registerCommand(
     "extension.brilharRGB",
@@ -142,7 +148,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     const decoration = vscode.window.createTextEditorDecorationType({
       //backgroundColor: cor,
-      color: "#FFFF00",
+      color: cor,
       fontWeight: "bold",
       textDecoration: `none; text-shadow: 0 0 10px ${cor}, 0 0 20px ${cor};`,
       outline: `1px solid ${cor}`,
@@ -241,12 +247,23 @@ export function activate(context: vscode.ExtensionContext) {
   let brilharLinhaDisposable = vscode.commands.registerCommand(
   "extension.brilharLinha",
   () => {
-    vscode.commands.executeCommand("extension.pararBrilho");
     const editor = vscode.window.activeTextEditor;
     if (!editor) return;
 
+    const uriAtual = editor.document.uri.toString();
     const posicaoCursor = editor.selection.active;
     const linha = editor.document.lineAt(posicaoCursor.line);
+
+    // Remove EXPLICITAMENTE todos os brilhos que intersectam com a linha
+    const brilhosNaLinha = brilhosAtivos.filter(b => 
+      b.uri === uriAtual && !!b.range.intersection(linha.range)
+    );
+    
+    brilhosNaLinha.forEach(brilho => {
+      clearInterval(brilho.interval);
+      brilho.decorationType.dispose();
+      brilhosAtivos = brilhosAtivos.filter(b => b.id !== brilho.id);
+    });
 
     // 1. Seleciona a linha inteira (do primeiro ao último caractere)
     const novaSelecao = new vscode.Selection(
@@ -255,8 +272,14 @@ export function activate(context: vscode.ExtensionContext) {
     );
     editor.selection = novaSelecao;
 
-    // 2. Aplica a marcação amarela estática à linha
-    iniciarBrilhoEstático(editor, linha.range, COR_AMARELA);
+    // 2. Aplica a marcação à linha com a cor do atalho
+    if (corAtalho === "rainbow") {
+      // Se rainbow, aplica o efeito animado
+      iniciarBrilho(editor, linha.range);
+    } else {
+      // Caso contrário, aplica a cor estática
+      iniciarBrilhoEstático(editor, linha.range, corAtalho);
+    }
 
     // 3. Desseleciona o texto para evitar que seja sobrescrito acidentalmente
     editor.selection = new vscode.Selection(linha.range.end, linha.range.end);
@@ -296,11 +319,28 @@ export function activate(context: vscode.ExtensionContext) {
 
       // 1. Ajuste de deslocamento (Edição antes do brilho)
       if (r.end.isBefore(novoRange.start)) {
+        // Calcula o número de linhas adicionadas/removidas
+        const linhasAdicionadas = (change.text.match(/\n/g) || []).length;
+        const linhasRemovidas = r.end.line - r.start.line;
+        const deltaLinhas = linhasAdicionadas - linhasRemovidas;
+        
+        // Calcula delta de caracteres (apenas para mesma linha)
         const delta = change.text.length - change.rangeLength;
-        novoRange = new vscode.Range(
-          novoRange.start.translate(0, delta),
-          novoRange.end.translate(0, delta)
-        );
+        
+        // Se a edição foi em linha anterior, ajusta linhas
+        if (r.end.line < novoRange.start.line) {
+          novoRange = new vscode.Range(
+            novoRange.start.translate(deltaLinhas, 0),
+            novoRange.end.translate(deltaLinhas, 0)
+          );
+        } 
+        // Se for na mesma linha, ajusta colunas
+        else {
+          novoRange = new vscode.Range(
+            novoRange.start.translate(0, delta),
+            novoRange.end.translate(0, delta)
+          );
+        }
         brilho.range = novoRange;
         return [brilho];
       }
@@ -355,13 +395,350 @@ export function activate(context: vscode.ExtensionContext) {
   }
 });
 
+  // Comando para configurar a cor do atalho
+  let configurarCorDisposable = vscode.commands.registerCommand(
+    "extension.configurarCorAtalho",
+    async () => {
+      const opcoes = [
+        { label: "🌈 Rainbow (Padrão)", description: "Efeito de cores alternadas", valor: "rainbow" },
+        { label: "🟨 Amarelo", description: "#FFFF00", valor: "#FFFF00" },
+        { label: "🎨 Cor Personalizada", description: "Escolher outra cor", valor: "personalizado" },
+      ];
+
+      const selecionada = await vscode.window.showQuickPick(opcoes, {
+        placeHolder: "Escolha a cor para o atalho CTRL+SHIFT+L",
+      });
+
+      if (!selecionada) return;
+
+      if (selecionada.valor === "personalizado") {
+        // Abrir painel de cor personalizada
+        abrirConfigurador(context);
+      } else {
+        corAtalho = selecionada.valor;
+        context.globalState.update('corAtalho', corAtalho);
+        vscode.window.showInformationMessage(`Cor do atalho alterada para: ${selecionada.label}`);
+      }
+    }
+  );
+
   context.subscriptions.push(
     disposable,
     stopDisposable,
     editorChangeListener,
     changeListener,
-    brilharLinhaDisposable
+    brilharLinhaDisposable,
+    configurarCorDisposable
   );
+}
+
+function abrirConfigurador(context: vscode.ExtensionContext) {
+  const panel = vscode.window.createWebviewPanel(
+    "colorPicker",
+    "Configurador de Cor - RGB Highlighter",
+    vscode.ViewColumn.One,
+    { enableScripts: true }
+  );
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Configurador de Cor</title>
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 100vh;
+          padding: 20px;
+        }
+
+        .container {
+          background: white;
+          border-radius: 16px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+          padding: 40px;
+          max-width: 500px;
+          width: 100%;
+        }
+
+        h1 {
+          color: #333;
+          margin-bottom: 10px;
+          text-align: center;
+          font-size: 28px;
+        }
+
+        .subtitle {
+          color: #666;
+          text-align: center;
+          margin-bottom: 30px;
+          font-size: 14px;
+        }
+
+        .color-section {
+          margin-bottom: 30px;
+        }
+
+        label {
+          display: block;
+          color: #333;
+          font-weight: 600;
+          margin-bottom: 12px;
+          font-size: 14px;
+        }
+
+        .color-input-wrapper {
+          display: flex;
+          gap: 15px;
+          align-items: center;
+        }
+
+        input[type="color"] {
+          width: 80px;
+          height: 80px;
+          border: 3px solid #e0e0e0;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: border-color 0.2s;
+        }
+
+        input[type="color"]:hover {
+          border-color: #667eea;
+        }
+
+        .hex-display {
+          flex: 1;
+          padding: 12px 16px;
+          background: #f5f5f5;
+          border: 2px solid #e0e0e0;
+          border-radius: 8px;
+          font-family: 'Courier New', monospace;
+          font-weight: 600;
+          color: #333;
+          font-size: 16px;
+          transition: all 0.2s;
+        }
+
+        .hex-display:focus {
+          outline: none;
+          border-color: #667eea;
+          background: white;
+        }
+
+        .preview {
+          margin-top: 20px;
+          padding: 20px;
+          background: #f9f9f9;
+          border-radius: 8px;
+          border-left: 4px solid #667eea;
+        }
+
+        .preview-label {
+          color: #666;
+          font-size: 12px;
+          margin-bottom: 8px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .preview-text {
+          padding: 12px 16px;
+          border-radius: 6px;
+          font-weight: bold;
+          font-size: 16px;
+          text-align: center;
+          background-color: var(--preview-color);
+          color: black;
+          text-shadow: 0 0 10px var(--preview-color), 0 0 20px var(--preview-color);
+        }
+
+        .button-group {
+          display: flex;
+          gap: 12px;
+          margin-top: 30px;
+        }
+
+        button {
+          flex: 1;
+          padding: 12px 20px;
+          border: none;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .btn-save {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+        }
+
+        .btn-save:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-cancel {
+          background: #f0f0f0;
+          color: #333;
+        }
+
+        .btn-cancel:hover {
+          background: #e0e0e0;
+        }
+
+        .presets {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 12px;
+          margin-top: 20px;
+        }
+
+        .preset-btn {
+          padding: 10px;
+          border: 2px solid #e0e0e0;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 13px;
+          transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+          border-color: #667eea;
+          transform: translateY(-2px);
+        }
+
+        .preset-btn.active {
+          border-color: #667eea;
+          box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>🎨 Escolha uma Cor</h1>
+        <p class="subtitle">Configure a cor para o atalho CTRL+SHIFT+L</p>
+
+        <div class="color-section">
+          <label for="colorPicker">Cor Personalizada</label>
+          <div class="color-input-wrapper">
+            <input type="color" id="colorPicker" value="#FFFF00">
+            <input type="text" id="hexInput" class="hex-display" value="#FFFF00" placeholder="#FFFFFF">
+          </div>
+        </div>
+
+        <div class="color-section">
+          <label>Cores Pré-definidas</label>
+          <div class="presets">
+            <button class="preset-btn active" data-color="#FFFF00">🟨 Amarelo</button>
+            <button class="preset-btn" data-color="#FF5733">🔴 Vermelho</button>
+            <button class="preset-btn" data-color="#33FF57">🟢 Verde</button>
+            <button class="preset-btn" data-color="#3357FF">🔵 Azul</button>
+            <button class="preset-btn" data-color="#FF33F5">🟣 Magenta</button>
+            <button class="preset-btn" data-color="#33FFF5">🟦 Ciano</button>
+            <button class="preset-btn" data-color="#FFB833">🟠 Laranja</button>
+            <button class="preset-btn" data-color="#FF33B8">🎀 Rosa</button>
+          </div>
+        </div>
+
+        <div class="preview">
+          <p class="preview-label">Prévia</p>
+          <div class="preview-text" style="--preview-color: #FFFF00">Exemplo de Destaque</div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn-save" onclick="salvar()">💾 Salvar</button>
+          <button class="btn-cancel" onclick="cancelar()">✕ Cancelar</button>
+        </div>
+      </div>
+
+      <script>
+        const vscode = acquireVsCodeApi();
+        const colorPicker = document.getElementById('colorPicker');
+        const hexInput = document.getElementById('hexInput');
+        const previewText = document.querySelector('.preview-text');
+        const presets = document.querySelectorAll('.preset-btn');
+
+        colorPicker.addEventListener('input', (e) => {
+          const color = e.target.value;
+          hexInput.value = color.toUpperCase();
+          atualizarPreview(color);
+          atualizarPresets(color);
+        });
+
+        hexInput.addEventListener('input', (e) => {
+          let color = e.target.value;
+          if (!color.startsWith('#')) color = '#' + color;
+          if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+            colorPicker.value = color;
+            atualizarPreview(color);
+            atualizarPresets(color);
+          }
+        });
+
+        presets.forEach(btn => {
+          btn.addEventListener('click', () => {
+            const color = btn.dataset.color;
+            colorPicker.value = color;
+            hexInput.value = color;
+            atualizarPreview(color);
+            atualizarPresets(color);
+          });
+        });
+
+        function atualizarPreview(color) {
+          previewText.style.setProperty('--preview-color', color);
+        }
+
+        function atualizarPresets(color) {
+          presets.forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.color.toUpperCase() === color.toUpperCase()) {
+              btn.classList.add('active');
+            }
+          });
+        }
+
+        function salvar() {
+          const cor = hexInput.value;
+          vscode.postMessage({ comando: 'salvar', cor: cor });
+        }
+
+        function cancelar() {
+          vscode.postMessage({ comando: 'cancelar' });
+        }
+      </script>
+    </body>
+    </html>
+  `;
+
+  panel.webview.html = htmlContent;
+
+  panel.webview.onDidReceiveMessage((message) => {
+    if (message.comando === "salvar") {
+      corAtalho = message.cor;
+      context.globalState.update('corAtalho', corAtalho);
+      vscode.window.showInformationMessage(`Cor do atalho alterada para: ${message.cor}`);
+      panel.dispose();
+    } else if (message.comando === "cancelar") {
+      panel.dispose();
+    }
+  });
 }
 
 function limparTodosOsBrilhos() {

@@ -32,9 +32,13 @@
         "title": "Desativar Brilho RGB"
       },
       {
-      "command": "extension.brilharLinha",
-      "title": "RGB: Brilhar Linha Atual"
-    }
+        "command": "extension.brilharLinha",
+        "title": "RGB: Brilhar Linha Atual"
+      },
+      {
+        "command": "extension.configurarCorAtalho",
+        "title": "RGB: Configurar Cor do Atalho"
+      }
     ],
     "keybindings": [
     {
@@ -53,6 +57,10 @@
         },
         {
           "command": "extension.pararBrilho",
+          "group": "modification"
+        },
+        {
+          "command": "extension.configurarCorAtalho",
           "group": "modification"
         }
       ]
