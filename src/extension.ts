@@ -72,6 +72,16 @@ export function activate(context: vscode.ExtensionContext) {
       textDecoration: `none; text-shadow: 0 0 10px ${color}, 0 0 20px ${color};`,
       outline: `1px solid ${color}`,
       rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
+      overviewRulerColor: color,
+      overviewRulerLane: vscode.OverviewRulerLane.Full,
+      backgroundColor: color + '33', // Adiciona o fundo suave para aparecer no Minimap
+
+      dark: {
+        overviewRulerColor: color
+      },
+      light: {
+        overviewRulerColor: color
+      }
     });
   };
 
@@ -117,6 +127,16 @@ export function activate(context: vscode.ExtensionContext) {
       textDecoration: `none; text-shadow: 0 0 10px ${color}, 0 0 20px ${color};`,
       outline: `1px solid ${color}`,
       rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
+      overviewRulerColor: color,
+      overviewRulerLane: vscode.OverviewRulerLane.Full,
+      backgroundColor: color + '33', // Adiciona o fundo suave para aparecer no Minimap
+
+      dark: {
+        overviewRulerColor: color
+      },
+      light: {
+        overviewRulerColor: color
+      }
     });
 
     editor.setDecorations(decoration, [range]);
