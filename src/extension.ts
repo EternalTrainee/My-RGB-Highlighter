@@ -7,10 +7,15 @@ interface BrilhoInstancia {
   decorationType: vscode.TextEditorDecorationType;
   range: vscode.Range;
   uri: string;
+  tipo?: "dinamico" | "estatico"; // Tipo de brilho
+  cor?: string; // Cor estática (se tipo === "estatico")
 }
 
 // Lista global para armazenar todos os brilhos ativos
 let brilhosAtivos: BrilhoInstancia[] = [];
+
+// Cor amarela para marcação estática
+const COR_AMARELA = "#FFFF00";
 
 export function activate(context: vscode.ExtensionContext) {
   // Comando para ativar o brilho RGB
@@ -75,13 +80,19 @@ export function activate(context: vscode.ExtensionContext) {
         decorationType: currentDecoration,
         range: rangeAtual,
         uri: uriAtual,
+        tipo: "dinamico",
       });
+
+      // Desseleciona o texto para evitar que seja sobrescrito acidentalmente
+      editor.selection = new vscode.Selection(rangeAtual.end, rangeAtual.end);
     }
   );
 
   function iniciarBrilho(editor: vscode.TextEditor, range: vscode.Range) {
     const uriAtual = editor.document.uri.toString();
     let hue = 0;
+
+  
 
     const criarDecoracao = (h: number) => {
     const cor = `hsl(${h}, 100%, 50%)`;
@@ -121,6 +132,36 @@ export function activate(context: vscode.ExtensionContext) {
       decorationType: currentDecoration,
       range,
       uri: uriAtual,
+      tipo: "dinamico",
+    });
+
+  }
+
+  function iniciarBrilhoEstático(editor: vscode.TextEditor, range: vscode.Range, cor: string) {
+    const uriAtual = editor.document.uri.toString();
+
+    const decoration = vscode.window.createTextEditorDecorationType({
+      //backgroundColor: cor,
+      color: "#FFFF00",
+      fontWeight: "bold",
+      textDecoration: `none; text-shadow: 0 0 10px ${cor}, 0 0 20px ${cor};`,
+      outline: `1px solid ${cor}`,
+      rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
+    });
+
+    editor.setDecorations(decoration, [range]);
+
+    // Dummy interval com clearInterval vazio para manter compatibilidade
+    const interval = setInterval(() => {}, 999999999);
+
+    brilhosAtivos.push({
+      id: Math.random().toString(36).slice(2, 11),
+      interval,
+      decorationType: decoration,
+      range,
+      uri: uriAtual,
+      tipo: "estatico",
+      cor,
     });
   }
 
@@ -137,7 +178,8 @@ export function activate(context: vscode.ExtensionContext) {
     if (base.end.isAfter(interseccao.end)) {
       resultados.push(new vscode.Range(interseccao.end, base.end));
     }
-    return resultados;
+    
+    return resultados.filter(r => !r.isEmpty);
   }
   // Comando para parar TODOS os brilhos
   let stopDisposable = vscode.commands.registerCommand(
@@ -148,28 +190,52 @@ export function activate(context: vscode.ExtensionContext) {
 
       const selecaoUsuario = editor.selection;
       const uriAtual = editor.document.uri.toString();
+      const posicaoCursor = editor.selection.active;
 
-      // Filtra instâncias que têm qualquer intersecção com a seleção
-      const afetados = brilhosAtivos.filter(b => 
-        b.uri === uriAtual && !!b.range.intersection(selecaoUsuario)
-      );
+      let afetados: BrilhoInstancia[] = [];
+
+      if (selecaoUsuario.isEmpty) {
+        // Sem seleção: encontra o brilho que contém o cursor
+        afetados = brilhosAtivos.filter(b => 
+          b.uri === uriAtual && b.range.contains(posicaoCursor)
+        );
+      } else {
+        // Com seleção: encontra brilhos que intersectam com a seleção
+        afetados = brilhosAtivos.filter(b => 
+          b.uri === uriAtual && !!b.range.intersection(selecaoUsuario)
+        );
+      }
+
+      if (afetados.length === 0) {
+        vscode.window.setStatusBarMessage("Nenhum efeito RGB para desativar.", 2000);
+        return;
+      }
 
       afetados.forEach(brilho => {
-        // 1. Para o motor e remove a decoração antiga
-        clearInterval(brilho.interval);
-        brilho.decorationType.dispose();
+        if (selecaoUsuario.isEmpty) {
+          // Desativa o brilho inteiro (não cria sobras)
+          clearInterval(brilho.interval);
+          brilho.decorationType.dispose();
+          brilhosAtivos = brilhosAtivos.filter(b => b.id !== brilho.id);
+        } else {
+          // Desativa apenas a seleção (cria sobras)
+          clearInterval(brilho.interval);
+          brilho.decorationType.dispose();
+          brilhosAtivos = brilhosAtivos.filter(b => b.id !== brilho.id);
 
-        // 2. Remove da lista global de rastreamento
-        brilhosAtivos = brilhosAtivos.filter(b => b.id !== brilho.id);
-
-        // 3. Calcula o que SOBROU do brilho original (áreas fora da seleção)
-        const sobras = subtrairRanges(brilho.range, selecaoUsuario);
-
-        // 4. Reinicia o brilho apenas para as partes que devem continuar
-        sobras.forEach(rangeSobra => {
-          iniciarBrilho(editor, rangeSobra);
-        });
+          const sobras = subtrairRanges(brilho.range, selecaoUsuario);
+          
+          sobras.forEach(rangeSobra => {
+            if (brilho.tipo === "estatico" && brilho.cor) {
+              iniciarBrilhoEstático(editor, rangeSobra, brilho.cor);
+            } else {
+              iniciarBrilho(editor, rangeSobra);
+            }
+          });
+        }
       });
+
+      vscode.window.setStatusBarMessage(`Desativados ${afetados.length} efeito(s).`, 2000);
     }
   );
   let brilharLinhaDisposable = vscode.commands.registerCommand(
@@ -189,9 +255,11 @@ export function activate(context: vscode.ExtensionContext) {
     );
     editor.selection = novaSelecao;
 
-    // 2. Executa o comando de brilho que você já criou
-    // Isso garante que ele passe pelas validações de limpeza e limite de 5 brilhos
-    vscode.commands.executeCommand("extension.brilharRGB");
+    // 2. Aplica a marcação amarela estática à linha
+    iniciarBrilhoEstático(editor, linha.range, COR_AMARELA);
+
+    // 3. Desseleciona o texto para evitar que seja sobrescrito acidentalmente
+    editor.selection = new vscode.Selection(linha.range.end, linha.range.end);
   }
 );
   // Reaplica as decorações ao trocar de aba/editor
@@ -213,14 +281,18 @@ export function activate(context: vscode.ExtensionContext) {
   const uri = event.document.uri.toString();
   const editor = vscode.window.activeTextEditor;
 
-  // Atribuímos o resultado do flatMap diretamente à variável global no final
-  brilhosAtivos = brilhosAtivos.flatMap((brilho) => {
-    if (brilho.uri !== uri) {return [brilho];};
+  // Coletar ranges de sobras que precisam ser recriadas
+  const sobrasParaReciar: { range: vscode.Range; uri: string; tipo?: "dinamico" | "estatico"; cor?: string }[] = [];
 
-    let novoRange = brilho.range;
+  // Processa cada mudança de texto
+  for (const change of event.contentChanges) {
+    const r = change.range;
 
-    for (const change of event.contentChanges) {
-      const r = change.range;
+    // Processa cada brilho
+    brilhosAtivos = brilhosAtivos.flatMap((brilho) => {
+      if (brilho.uri !== uri) {return [brilho];};
+
+      let novoRange = brilho.range;
 
       // 1. Ajuste de deslocamento (Edição antes do brilho)
       if (r.end.isBefore(novoRange.start)) {
@@ -229,7 +301,8 @@ export function activate(context: vscode.ExtensionContext) {
           novoRange.start.translate(0, delta),
           novoRange.end.translate(0, delta)
         );
-        continue;
+        brilho.range = novoRange;
+        return [brilho];
       }
 
       // 2. Intersecção ou Deletou tudo
@@ -242,19 +315,44 @@ export function activate(context: vscode.ExtensionContext) {
           return []; // Brilho totalmente engolido pela edição
         }
 
-        // Se deletou parcialmente, criamos as sobras e retornamos VAZIO para o original
+        // Se deletou parcialmente, criamos as sobras
         const sobras = subtrairRanges(novoRange, r);
-        if (editor) {
-          sobras.forEach(s => iniciarBrilho(editor, s));
-        }
-        return []; // O original morre aqui, os novos nascem via iniciarBrilho
-      }
-    }
+        sobras.forEach((s) => {
+          sobrasParaReciar.push({ range: s, uri: brilho.uri, tipo: brilho.tipo, cor: brilho.cor });
+        });
 
-    // Se o brilho sobreviveu ou só foi deslocado, atualizamos o range e mantemos
-    brilho.range = novoRange;
-    return [brilho];
-  });
+        return []; // Remove o brilho original
+      }
+
+      // Se o brilho sobreviveu ou só foi deslocado, atualizamos o range e mantemos
+      brilho.range = novoRange;
+      return [brilho];
+    });
+  }
+
+
+
+  // Agora inicia os novos brilhos (as sobras) - SEM adicionar à lista antes
+  if (editor && sobrasParaReciar.length > 0) {
+    sobrasParaReciar.forEach((sobra) => {
+      if (sobra.tipo === "estatico" && sobra.cor) {
+        iniciarBrilhoEstático(editor, sobra.range, sobra.cor);
+      } else {
+        iniciarBrilho(editor, sobra.range);
+      }
+    });
+  }
+
+  
+  // Reaplica as decorações após as mudanças para garantir que a UI está atualizada
+  if (editor) {
+    const uri = editor.document.uri.toString();
+    brilhosAtivos.forEach((brilho) => {
+      if (brilho.uri === uri) {
+        editor.setDecorations(brilho.decorationType, [brilho.range]);
+      }
+    });
+  }
 });
 
   context.subscriptions.push(

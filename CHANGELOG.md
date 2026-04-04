@@ -4,11 +4,15 @@
 
 ### ✨ Novas Funcionalidades
 
+- **Marcador Amarelo Estático:** Adicionada marcação estática em amarelo com efeito neon ao usar `Ctrl+Shift+L` / `Cmd+Shift+L`, imitando marcadores de texto do mundo real.
 - **abcd:** abcd.
 
 ### 🐛 Correções de Bugs (Fixes)
 
 - **Fim do flickering inicial (#22):** Resolvido o problema de cintilação ao iniciar ou reiniciar brilhos; as decorações agora são aplicadas com cor imediata, eliminando o frame vazio antes da primeira animação.
+- **Preservação de tipo de brilho ao editar (#36):** Corrigido bug onde edições dentro de um trecho destacado alternavam o brilho rainbow para amarelo ou vice-versa. Agora o tipo de destaque é mantido ao fragmentar durante edição.
+- **Deseleção após aplicar efeito (#36):** Os comandos `extension.brilharRGB` e `extension.brilharLinha` agora desselacionam o texto após aplicar o efeito, prevenindo que o usuário sobrescreva acidentalmente o trecho ao pressionar uma tecla.
+- **Funcionamento de stopDisposable ao editar (#36):** Resolvido problema onde `extension.pararBrilho` falhava em encontrar brilhos após edições dentro do trecho destacado, causado por reordenação incorreta de brilhos durante fragmentação.
 
 ---
 
