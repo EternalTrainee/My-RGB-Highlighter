@@ -63,7 +63,7 @@ npm run lint
 
 ## 📝 Release Notes
 
-### 1.2.1 - 2026-04-06
+### 1.2.2 - 2026-04-06
 
 ### 🐛 Bug Fixes
 
