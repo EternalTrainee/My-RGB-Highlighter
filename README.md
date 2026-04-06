@@ -36,7 +36,7 @@ A Visual Studio Code extension that adds animated RGB highlight effects to selec
 5. **Safe Editing:** After applying any highlight, the text is automatically deselected to prevent accidental overwrite when you press a key.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/EternalTrainee/My-RGB-Highlighter/main/images/sample.gif" alt="RGB Highlighter Demo"/>
+  <img src="https://raw.githubusercontent.com/EternalTrainee/My-RGB-Highlighter/refs/heads/main/sample_1_2_2.gif" alt="RGB Highlighter Demo"/>
 </p>
 
 The animation is displayed only while the command is active. The RGB highlight will continuously change color, creating a vibrant visual effect.
