@@ -29,7 +29,8 @@ The animation is displayed only while the command is active. The RGB highlight w
 | **Highlight Text** | `RGB: Highlight Text` | - |
 | **Highlight Line** | `RGB: Highlight Current Line` | `Ctrl+Shift+L` (Win/Lin) / `Cmd+Shift+L` (Mac) |
 | **Remove Highlight** | `RGB: Remove Highlight` | - |
-| **Configure Color** | `RGB: Configure Shortcut Color` | - |
+| **Set Color** | `RGB: Configure Shortcut Color` | - |
+| **Load Saved Highlights** | `RGB: Load Saved Highlights` | - |
 
 ### In the Editor
 1. **Manual Highlight:** Select any block of text > Right-click > **"RGB: Highlight Text"**. The highlight will use the color configured via `RGB: Configure Shortcut Color` (Rainbow by default).
