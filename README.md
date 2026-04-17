@@ -14,6 +14,7 @@ A Visual Studio Code extension that adds animated RGB highlight effects to selec
 - **Text-Shadow Effect**: Creates a subtle "glow" effect around the text
 - **Highlight Type Preservation**: Maintains the highlight type (animated or static) even when editing text within the marked area
 - **Persistent Color Preference**: Saves your custom color choices between VS Code sessions
+- **Safer Saved Highlight Loading**: Loads saved highlights before new highlight changes are written, preventing persisted highlights from being lost
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/EternalTrainee/My-RGB-Highlighter/refs/heads/main/images/sample.gif" alt="RGB Highlighter Demo"/>
@@ -29,7 +30,7 @@ The animation is displayed only while the command is active. The RGB highlight w
 | **Highlight Text** | `RGB: Highlight Text` | - |
 | **Highlight Line** | `RGB: Highlight Current Line` | `Ctrl+Shift+L` (Win/Lin) / `Cmd+Shift+L` (Mac) |
 | **Remove Highlight** | `RGB: Remove Highlight` | - |
-| **Set Color** | `RGB: Configure Shortcut Color` | - |
+| **Set Color** | `RGB: Set Color` | - |
 | **Load Saved Highlights** | `RGB: Load Saved Highlights` | - |
 
 ### In the Editor
@@ -63,6 +64,13 @@ npm run lint
 ```
 
 ## 📝 Release Notes
+
+### 1.3.1 - 2026-04-16
+
+### 🐛 Bug Fixes
+
+- **Load Before Save:** Saved highlights are now loaded before creating or updating highlights, preventing existing persisted highlights from being overwritten by a new highlight action.
+- **Activation Restore:** Highlights for the active editor now load automatically when the extension starts.
 
 ### 1.3.0 - 2026-04-07
 

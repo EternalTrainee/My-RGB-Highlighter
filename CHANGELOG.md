@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1] - 2026-04-16
+
+### 🐛 Bug Fixes
+
+- **Load Saved Highlights Before New Mutations:** Persisted highlights are now loaded into memory before creating, removing, updating, or saving highlights for the active file. This prevents previously saved highlights from being overwritten when a new highlight is added before a manual load.
+- **Automatic Restore On Activation:** Saved highlights for the already-open editor are now restored during extension activation, reducing the chance of persistence state drifting before the first command runs.
+
 ## [1.3.0] - 2026-04-07
 
 ### ✨ New Features

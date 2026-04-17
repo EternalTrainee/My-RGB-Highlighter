@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 // Interface to manage each highlight instance individually
 interface HighlightInstance {
   id: string;
-  interval: NodeJS.Timeout;
+  interval: ReturnType<typeof setInterval>;
   decorationType: vscode.TextEditorDecorationType;
   range: vscode.Range;
   uri: string;
@@ -23,6 +23,8 @@ interface PersistedHighlight {
 
 // Global list to store all active highlights
 let activeHighlights: HighlightInstance[] = [];
+const loadedHighlightUris = new Set<string>();
+const loadingHighlightUris = new Set<string>();
 
 // Yellow color for static highlighting
 const YELLOW_COLOR = "#FFFF00";
@@ -48,6 +50,13 @@ export function activate(context: vscode.ExtensionContext) {
   function saveHighlightsForUri(uri: string) {
     if (!persistHighlights) return;
 
+    const editor = vscode.window.visibleTextEditors.find(
+      (visibleEditor) => visibleEditor.document.uri.toString() === uri
+    );
+    if (editor && !loadingHighlightUris.has(uri)) {
+      ensureHighlightsLoadedForUri(editor);
+    }
+
     const toSave: PersistedHighlight[] = activeHighlights
       .filter((h) => h.uri === uri)
       .map((h) => ({
@@ -60,6 +69,22 @@ export function activate(context: vscode.ExtensionContext) {
       }));
 
     context.globalState.update(PERSIST_KEY_PREFIX + uri, toSave.length > 0 ? toSave : undefined);
+  }
+
+  function ensureHighlightsLoadedForUri(editor: vscode.TextEditor, force = false) {
+    if (!persistHighlights) return;
+
+    const uri = editor.document.uri.toString();
+    if (loadingHighlightUris.has(uri)) return;
+    if (!force && loadedHighlightUris.has(uri)) return;
+
+    loadingHighlightUris.add(uri);
+    try {
+      loadHighlightsForUri(editor);
+      loadedHighlightUris.add(uri);
+    } finally {
+      loadingHighlightUris.delete(uri);
+    }
   }
 
   function loadHighlightsForUri(editor: vscode.TextEditor) {
@@ -110,6 +135,8 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
+    ensureHighlightsLoadedForUri(editor);
+
     const selection = editor.selection;
     if (selection.isEmpty) {
       vscode.window.showInformationMessage(
@@ -140,6 +167,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   function startHighlight(editor: vscode.TextEditor, range: vscode.Range) {
     const currentUri = editor.document.uri.toString();
+    ensureHighlightsLoadedForUri(editor);
     let hue = 0;
 
     const createDecoration = (h: number) => {
@@ -198,6 +226,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   function startStaticHighlight(editor: vscode.TextEditor, range: vscode.Range, color: string) {
     const currentUri = editor.document.uri.toString();
+    ensureHighlightsLoadedForUri(editor);
 
     const decoration = vscode.window.createTextEditorDecorationType({
       color: color,
@@ -258,6 +287,7 @@ export function activate(context: vscode.ExtensionContext) {
      () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {return;};
+    ensureHighlightsLoadedForUri(editor);
 
     const userSelection = editor.selection;
     const currentUri = editor.document.uri.toString();
@@ -437,6 +467,7 @@ export function activate(context: vscode.ExtensionContext) {
     () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) return;
+    ensureHighlightsLoadedForUri(editor);
 
     const currentUri = editor.document.uri.toString();
     const cursorPosition = editor.selection.active;
@@ -506,7 +537,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Then load persisted highlights that aren't in memory yet
     const alreadyLoaded = activeHighlights.some((h) => h.uri === uri);
     if (!alreadyLoaded) {
-      loadHighlightsForUri(editor);
+      ensureHighlightsLoadedForUri(editor);
     }
   });
 
@@ -515,6 +546,16 @@ export function activate(context: vscode.ExtensionContext) {
   const changeListener = vscode.workspace.onDidChangeTextDocument((event) => {
     const uri = event.document.uri.toString();
     const editor = vscode.window.activeTextEditor;
+    const affectedEditor =
+      editor && editor.document.uri.toString() === uri
+        ? editor
+        : vscode.window.visibleTextEditors.find(
+            (visibleEditor) => visibleEditor.document.uri.toString() === uri
+          );
+
+    if (affectedEditor) {
+      ensureHighlightsLoadedForUri(affectedEditor);
+    }
 
     // Collect ranges of leftovers that need to be recreated
     const leftoversToRecreate: { range: vscode.Range; uri: string; type?: "dynamic" | "static"; color?: string }[] = [];
@@ -697,16 +738,16 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showWarningMessage("Please open a file first!");
         return;
       }
-      loadHighlightsForUri(editor);
+      ensureHighlightsLoadedForUri(editor, true);
       vscode.window.setStatusBarMessage("Highlights loaded.", 2000);
     }
   );
 
   // ── Load highlights for the file that is already open on activation ──
 
-  // if (vscode.window.activeTextEditor) {
-  //   loadHighlightsForUri(vscode.window.activeTextEditor);
-  // }
+  if (vscode.window.activeTextEditor) {
+    ensureHighlightsLoadedForUri(vscode.window.activeTextEditor);
+  }
 
   context.subscriptions.push(
     disposable,
