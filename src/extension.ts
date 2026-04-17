@@ -21,6 +21,11 @@ interface PersistedHighlight {
   endChar: number;
 }
 
+interface LoadHighlightsResult {
+  hadSavedHighlights: boolean;
+  wasLoadedThisCall: boolean;
+}
+
 // Global list to store all active highlights
 let activeHighlights: HighlightInstance[] = [];
 const loadedHighlightUris = new Set<string>();
@@ -47,6 +52,10 @@ export function activate(context: vscode.ExtensionContext) {
 
   // ── Persistence helpers ──────────────────────────────────────────────────
 
+  function getSavedHighlightsForUri(uri: string): PersistedHighlight[] {
+    return context.globalState.get<PersistedHighlight[]>(PERSIST_KEY_PREFIX + uri) ?? [];
+  }
+
   function saveHighlightsForUri(uri: string) {
     if (!persistHighlights) return;
 
@@ -71,27 +80,37 @@ export function activate(context: vscode.ExtensionContext) {
     context.globalState.update(PERSIST_KEY_PREFIX + uri, toSave.length > 0 ? toSave : undefined);
   }
 
-  function ensureHighlightsLoadedForUri(editor: vscode.TextEditor, force = false) {
-    if (!persistHighlights) return;
+  function ensureHighlightsLoadedForUri(editor: vscode.TextEditor, force = false): LoadHighlightsResult {
+    if (!persistHighlights) {
+      return { hadSavedHighlights: false, wasLoadedThisCall: false };
+    }
 
     const uri = editor.document.uri.toString();
-    if (loadingHighlightUris.has(uri)) return;
-    if (!force && loadedHighlightUris.has(uri)) return;
+    const savedHighlights = getSavedHighlightsForUri(uri);
+    const hadSavedHighlights = savedHighlights.length > 0;
+
+    if (loadingHighlightUris.has(uri)) {
+      return { hadSavedHighlights, wasLoadedThisCall: false };
+    }
+    if (!force && loadedHighlightUris.has(uri)) {
+      return { hadSavedHighlights, wasLoadedThisCall: false };
+    }
 
     loadingHighlightUris.add(uri);
     try {
-      loadHighlightsForUri(editor);
+      loadHighlightsForUri(editor, savedHighlights);
       loadedHighlightUris.add(uri);
+      return { hadSavedHighlights, wasLoadedThisCall: true };
     } finally {
       loadingHighlightUris.delete(uri);
     }
   }
 
-  function loadHighlightsForUri(editor: vscode.TextEditor) {
+  function loadHighlightsForUri(editor: vscode.TextEditor, savedHighlights?: PersistedHighlight[]) {
     if (!persistHighlights) return;
 
     const uri = editor.document.uri.toString();
-    const saved = context.globalState.get<PersistedHighlight[]>(PERSIST_KEY_PREFIX + uri);
+    const saved = savedHighlights ?? getSavedHighlightsForUri(uri);
     if (!saved || saved.length === 0) return;
 
     // Remove any already-active highlights for this URI to avoid duplicates
@@ -117,9 +136,9 @@ export function activate(context: vscode.ExtensionContext) {
 
       const range = new vscode.Range(p.startLine, p.startChar, p.endLine, p.endChar);
       if (p.type === "static" && p.color) {
-        startStaticHighlight(editor, range, p.color);
+        startStaticHighlight(editor, range, p.color, false);
       } else {
-        startHighlight(editor, range);
+        startHighlight(editor, range, false);
       }
     });
   }
@@ -135,39 +154,113 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    ensureHighlightsLoadedForUri(editor);
+    const currentUri = editor.document.uri.toString();
+    const rangesBeforeLoad = getHighlightRangesForUri(currentUri);
+    const loadResult = ensureHighlightsLoadedForUri(editor);
 
-    const selection = editor.selection;
-    if (selection.isEmpty) {
+    const selections = editor.selections.filter((selection) => !selection.isEmpty);
+    if (selections.length === 0) {
       vscode.window.showInformationMessage(
         "Select text to highlight!",
       );
       return;
     }
 
-    vscode.commands.executeCommand("extension.pararBrilho");
+    for (const selection of selections) {
+      const currentRange = new vscode.Range(selection.start, selection.end);
+      const wasHighlightedBeforeLoad = isRangeFullyCoveredByRanges(currentRange, rangesBeforeLoad);
+      const wasLoadedFromPersistence =
+        loadResult.wasLoadedThisCall &&
+        loadResult.hadSavedHighlights &&
+        !wasHighlightedBeforeLoad &&
+        isRangeFullyHighlighted(currentUri, currentRange);
 
-    const currentRange = new vscode.Range(selection.start, selection.end);
+      removeHighlightsInRange(editor, currentRange, false);
 
-    // Apply highlight using the configured shortcut color
-    if (shortcutColor === "rainbow") {
-      // If rainbow, apply animated effect
-      startHighlight(editor, currentRange);
-    } else {
-      // Otherwise apply static color
-      startStaticHighlight(editor, currentRange, shortcutColor);
+      if (wasHighlightedBeforeLoad && !wasLoadedFromPersistence) {
+        continue;
+      }
+
+      if (shortcutColor === "rainbow") {
+        startHighlight(editor, currentRange, false);
+      } else {
+        startStaticHighlight(editor, currentRange, shortcutColor, false);
+      }
     }
 
-    // Deselect text to prevent accidental overwrite
-    editor.selection = new vscode.Selection(currentRange.end, currentRange.end);
+    saveHighlightsForUri(currentUri);
+    editor.selections = selections.map(
+      (selection) => new vscode.Selection(selection.end, selection.end)
+    );
+  }
+);
+
+  let highlightAllOccurrencesDisposable = vscode.commands.registerCommand(
+    "extension.brilharRGBTodasOcorrencias",
+    async () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showWarningMessage("Please open a file first!");
+      return;
+    }
+
+    const currentUri = editor.document.uri.toString();
+    const rangesBeforeLoad = getHighlightRangesForUri(currentUri);
+    const loadResult = ensureHighlightsLoadedForUri(editor);
+
+    const selection = editor.selection;
+    if (selection.isEmpty) {
+      vscode.window.showInformationMessage("Select text to highlight!");
+      return;
+    }
+
+    const selectedText = editor.document.getText(selection);
+    if (!selectedText.trim()) {
+      vscode.window.showInformationMessage("Select a word or text to highlight!");
+      return;
+    }
+
+    await vscode.commands.executeCommand("extension.pararBrilho");
+
+    const rangesToHighlight = findAllOccurrenceRanges(editor.document, selectedText);
+    if (rangesToHighlight.length === 0) {
+      vscode.window.showInformationMessage("No matching occurrences found in the active file.");
+      return;
+    }
+
+    for (const range of rangesToHighlight) {
+      const wasHighlightedBeforeLoad = isRangeFullyCoveredByRanges(range, rangesBeforeLoad);
+      const wasLoadedFromPersistence =
+        loadResult.wasLoadedThisCall &&
+        loadResult.hadSavedHighlights &&
+        !wasHighlightedBeforeLoad &&
+        isRangeFullyHighlighted(currentUri, range);
+
+      removeHighlightsInRange(editor, range, false);
+
+      if (wasHighlightedBeforeLoad && !wasLoadedFromPersistence) {
+        continue;
+      }
+
+      if (shortcutColor === "rainbow") {
+        startHighlight(editor, range, false);
+      } else {
+        startStaticHighlight(editor, range, shortcutColor, false);
+      }
+    }
+
+    saveHighlightsForUri(currentUri);
+
+    editor.selection = new vscode.Selection(selection.end, selection.end);
   }
 );
 
   // ── Core highlight creators ───────────────────────────────────────────
 
-  function startHighlight(editor: vscode.TextEditor, range: vscode.Range) {
+  function startHighlight(editor: vscode.TextEditor, range: vscode.Range, persist = true) {
     const currentUri = editor.document.uri.toString();
     ensureHighlightsLoadedForUri(editor);
+    removeHighlightAtRange(currentUri, range);
     let hue = 0;
 
     const createDecoration = (h: number) => {
@@ -221,12 +314,15 @@ export function activate(context: vscode.ExtensionContext) {
       type: "dynamic",
     });
 
-    saveHighlightsForUri(currentUri);
+    if (persist) {
+      saveHighlightsForUri(currentUri);
+    }
   }
 
-  function startStaticHighlight(editor: vscode.TextEditor, range: vscode.Range, color: string) {
+  function startStaticHighlight(editor: vscode.TextEditor, range: vscode.Range, color: string, persist = true) {
     const currentUri = editor.document.uri.toString();
     ensureHighlightsLoadedForUri(editor);
+    removeHighlightAtRange(currentUri, range);
 
     const decoration = vscode.window.createTextEditorDecorationType({
       color: color,
@@ -260,10 +356,129 @@ export function activate(context: vscode.ExtensionContext) {
       color,
     });
 
-    saveHighlightsForUri(currentUri);
+    if (persist) {
+      saveHighlightsForUri(currentUri);
+    }
   }
 
   // ── Helper: subtract overlapping ranges ──────────────────────────────
+
+  function areRangesEqual(a: vscode.Range, b: vscode.Range): boolean {
+    return a.start.isEqual(b.start) && a.end.isEqual(b.end);
+  }
+
+  function removeHighlightAtRange(uri: string, range: vscode.Range) {
+    const matchingHighlights = activeHighlights.filter(
+      (highlight) => highlight.uri === uri && areRangesEqual(highlight.range, range)
+    );
+
+    matchingHighlights.forEach((highlight) => {
+      clearInterval(highlight.interval);
+      highlight.decorationType.dispose();
+    });
+
+    if (matchingHighlights.length > 0) {
+      activeHighlights = activeHighlights.filter(
+        (highlight) => !(highlight.uri === uri && areRangesEqual(highlight.range, range))
+      );
+    }
+  }
+
+  function clearHighlight(highlight: HighlightInstance) {
+    clearInterval(highlight.interval);
+    highlight.decorationType.dispose();
+    activeHighlights = activeHighlights.filter((h) => h.id !== highlight.id);
+  }
+
+  function getHighlightRangesForUri(uri: string): vscode.Range[] {
+    return activeHighlights
+      .filter((highlight) => highlight.uri === uri)
+      .map((highlight) => highlight.range);
+  }
+
+  function isBeforeOrEqual(a: vscode.Position, b: vscode.Position): boolean {
+    return a.isBefore(b) || a.isEqual(b);
+  }
+
+  function isRangeFullyCoveredByRanges(range: vscode.Range, ranges: vscode.Range[]): boolean {
+    const coverage = ranges
+      .map((highlightRange) => highlightRange.intersection(range))
+      .filter((intersection): intersection is vscode.Range => !!intersection && !intersection.isEmpty)
+      .sort((a, b) => a.start.compareTo(b.start));
+
+    if (coverage.length === 0 || !coverage[0].start.isEqual(range.start)) {
+      return false;
+    }
+
+    let currentEnd = coverage[0].end;
+
+    for (let i = 1; i < coverage.length; i++) {
+      if (!isBeforeOrEqual(coverage[i].start, currentEnd)) {
+        return false;
+      }
+
+      if (currentEnd.isBefore(coverage[i].end)) {
+        currentEnd = coverage[i].end;
+      }
+    }
+
+    return isBeforeOrEqual(range.end, currentEnd);
+  }
+
+  function isRangeFullyHighlighted(uri: string, range: vscode.Range): boolean {
+    return isRangeFullyCoveredByRanges(range, getHighlightRangesForUri(uri));
+  }
+
+  function removeHighlightsInRange(editor: vscode.TextEditor, range: vscode.Range, persist = true) {
+    const currentUri = editor.document.uri.toString();
+    const affected = activeHighlights.filter(
+      (highlight) => highlight.uri === currentUri && !!highlight.range.intersection(range)
+    );
+
+    affected.forEach((highlight) => {
+      const leftovers = subtractRanges(highlight.range, range);
+      clearHighlight(highlight);
+
+      leftovers.forEach((leftoverRange) => {
+        if (highlight.type === "static" && highlight.color) {
+          startStaticHighlight(editor, leftoverRange, highlight.color, false);
+        } else {
+          startHighlight(editor, leftoverRange, false);
+        }
+      });
+    });
+
+    if (persist) {
+      saveHighlightsForUri(currentUri);
+    }
+  }
+
+  function findAllOccurrenceRanges(
+    document: vscode.TextDocument,
+    searchText: string
+  ): vscode.Range[] {
+    if (!searchText) {
+      return [];
+    }
+
+    const documentText = document.getText();
+    const ranges: vscode.Range[] = [];
+    let fromIndex = 0;
+
+    while (fromIndex < documentText.length) {
+      const matchIndex = documentText.indexOf(searchText, fromIndex);
+      if (matchIndex === -1) {
+        break;
+      }
+
+      const start = document.positionAt(matchIndex);
+      const end = document.positionAt(matchIndex + searchText.length);
+      ranges.push(new vscode.Range(start, end));
+      fromIndex = matchIndex + searchText.length;
+    }
+
+    return ranges;
+  }
 
   function subtractRanges(base: vscode.Range, occupied: vscode.Range): vscode.Range[] {
     const intersection = base.intersection(occupied);
@@ -408,14 +623,10 @@ export function activate(context: vscode.ExtensionContext) {
     affected.forEach(highlight => {
       if (userSelection.isEmpty) {
         // Deactivate entire highlight (no leftovers)
-        clearInterval(highlight.interval);
-        highlight.decorationType.dispose();
-        activeHighlights = activeHighlights.filter(h => h.id !== highlight.id);
+        clearHighlight(highlight);
       } else {
         // Deactivate only selection (creates leftovers)
-        clearInterval(highlight.interval);
-        highlight.decorationType.dispose();
-        activeHighlights = activeHighlights.filter(h => h.id !== highlight.id);
+        clearHighlight(highlight);
 
         const leftovers = subtractRanges(highlight.range, userSelection);
 
@@ -751,6 +962,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     disposable,
+    highlightAllOccurrencesDisposable,
     stopDisposable,
     editorChangeListener,
     changeListener,

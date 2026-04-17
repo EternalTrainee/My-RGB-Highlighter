@@ -2,10 +2,18 @@
 
 ## [1.3.1] - 2026-04-16
 
+### ✨ New Features
+
+- **Highlight All Selected Occurrences:** Added a new `RGB: Highlight Text (All Occurrences)` command that finds and highlights every repetition of the selected word or text in the active file, using the user's configured highlight color.
+- **Multi-Selection Highlighting:** `RGB: Highlight Text` now highlights all active editor selections, making multi-cursor and `Alt+Click` workflows work in a single action.
+- **Manual Highlight Shortcut:** Added `Ctrl+Alt+L` / `Cmd+Alt+L` to trigger `RGB: Highlight Text`, mirroring the line highlight workflow while applying the effect only to the current selection(s).
+
 ### 🐛 Bug Fixes
 
 - **Load Saved Highlights Before New Mutations:** Persisted highlights are now loaded into memory before creating, removing, updating, or saving highlights for the active file. This prevents previously saved highlights from being overwritten when a new highlight is added before a manual load.
 - **Automatic Restore On Activation:** Saved highlights for the already-open editor are now restored during extension activation, reducing the chance of persistence state drifting before the first command runs.
+- **Selected Range Toggle and Deduplication:** `RGB: Highlight Text` now removes effects from already-highlighted selected areas and clears overlapping ranges before reapplying, preventing stacked or duplicated effects.
+- **Loaded-Saved Reapply Behavior:** When `RGB: Highlight Text` first loads persisted highlights for a file during the same action, matching selected areas are reapplied instead of being treated as an immediate toggle-off.
 
 ## [1.3.0] - 2026-04-07
 

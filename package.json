@@ -40,6 +40,10 @@
         "title": "RGB: Highlight Text"
       },
       {
+        "command": "extension.brilharRGBTodasOcorrencias",
+        "title": "RGB: Highlight Text (All Occurrences)"
+      },
+      {
         "command": "extension.pararBrilho",
         "title": "RGB: Remove Highlight"
       },
@@ -58,6 +62,12 @@
     ],
     "keybindings": [
       {
+        "command": "extension.brilharRGB",
+        "key": "ctrl+alt+l",
+        "mac": "cmd+alt+l",
+        "when": "editorTextFocus && editorHasSelection"
+      },
+      {
         "command": "extension.brilharLinha",
         "key": "ctrl+shift+l",
         "mac": "cmd+shift+l",
@@ -68,6 +78,11 @@
       "editor/context": [
         {
           "command": "extension.brilharRGB",
+          "group": "modification",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "extension.brilharRGBTodasOcorrencias",
           "group": "modification",
           "when": "editorHasSelection"
         },
